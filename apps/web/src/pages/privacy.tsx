@@ -31,8 +31,8 @@ export function PrivacyPage() {
       </h2>
       <p>
         A session cookie is set after you click a magic link. It is used to keep
-        you signed in. Theme preference is stored in your browser with
-        localStorage.
+        you signed in. Theme preference and the privacy consent flag are stored
+        in your browser with localStorage.
       </p>
       <h2 className="font-heading text-lg font-semibold tracking-wider uppercase">
         Sharing

@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from "react-router"
 
+import { ConsentBanner } from "@/components/consent-banner"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { authClient } from "@/lib/auth-client"
 
@@ -12,7 +13,7 @@ export function SiteShell() {
   const { data: session, isPending } = authClient.useSession()
 
   return (
-    <div className="relative flex min-h-svh flex-col overflow-hidden bg-background">
+    <div className="relative flex min-h-svh flex-col bg-background">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-y-0 right-0 w-1/2 max-w-xl bg-[repeating-linear-gradient(90deg,transparent,transparent_31px,var(--border)_31px,var(--border)_32px)] opacity-60"
@@ -51,6 +52,8 @@ export function SiteShell() {
           Privacy
         </NavLink>
       </footer>
+
+      <ConsentBanner />
     </div>
   )
 }
