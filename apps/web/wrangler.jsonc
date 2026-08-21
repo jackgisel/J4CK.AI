@@ -16,5 +16,23 @@
       "binding": "BUCKET",
       "bucket_name": "j4ck-ai"
     }
-  ]
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "j4ck-ai",
+      "database_id": "07802343-c6cb-4463-82e1-bf8a1617683c",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["noreply@j4ck.ai"]
+    }
+  ],
+  "vars": {
+    "EMAIL_FROM": "noreply@j4ck.ai",
+    "BETTER_AUTH_SECRET": "WiJtCLy4wS5OlKS52/JLSof9u8kYV4tv+IamJZq0UK8="
+  }
 }

@@ -1,9 +1,20 @@
 import { Hono } from "hono"
 
+import { createAuth } from "./auth"
+
 const app = new Hono<{ Bindings: Env }>()
 
-app.get("/api/health", (c) => {
-  return c.json({ ok: true })
+app.all("/api/auth/*", (c) => {
+  return createAuth(c.env, c.req.raw).handler(c.req.raw)
+})
+
+app.get("/api/health", async (c) => {
+  try {
+    const row = await c.env.DB.prepare("SELECT 1 as ok").first<{ ok: number }>()
+    return c.json({ ok: true, db: row?.ok === 1 })
+  } catch {
+    return c.json({ ok: true, db: false })
+  }
 })
 
 app.get("/api/r2", async (c) => {
