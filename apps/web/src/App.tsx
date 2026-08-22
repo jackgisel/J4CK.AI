@@ -1,11 +1,16 @@
 import { Route, Routes } from "react-router"
 
 import { SiteShell } from "@/components/site-shell"
+import { ContactPage } from "@/pages/contact"
+import { NewContactPage } from "@/pages/contact-new"
+import { ContactsPage } from "@/pages/contacts"
 import { DashboardPage } from "@/pages/dashboard"
 import { LandingPage } from "@/pages/landing"
 import { LoginPage } from "@/pages/login"
+import { MessagesPage } from "@/pages/messages"
 import { NotFoundPage } from "@/pages/not-found"
 import { PrivacyPage } from "@/pages/privacy"
+import { ThreadPage } from "@/pages/thread"
 import { TosPage } from "@/pages/tos"
 
 export function App() {
@@ -15,6 +20,11 @@ export function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/contacts" element={<ContactsPage />} />
+        <Route path="/contacts/new" element={<NewContactPage />} />
+        <Route path="/contacts/:id" element={<ContactPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/messages/:id" element={<ThreadPage />} />
         <Route path="/tos" element={<TosPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="*" element={<NotFoundPage />} />

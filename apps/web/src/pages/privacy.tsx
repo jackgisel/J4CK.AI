@@ -16,15 +16,17 @@ export function PrivacyPage() {
         When you sign in, I store your email address, a display name derived
         from it, and session data. Sessions include a token, expiry, and may
         include IP address and user agent. Magic link emails go to the address
-        you submit.
+        you submit. If you make a guy, I store their name, color, and backstory.
+        Messages you send them are stored too.
       </p>
       <h2 className="font-heading text-lg font-semibold tracking-wider uppercase">
         Where it lives
       </h2>
       <p>
-        Account and session records are stored in Cloudflare D1. Object storage,
-        if used, is Cloudflare R2. The Worker that handles login runs on
-        Cloudflare. Magic link emails are sent with Cloudflare Email Service.
+        Account, session, guy, and message records are stored in Cloudflare D1.
+        Object storage, if used, is Cloudflare R2. The Worker that handles login
+        runs on Cloudflare. Magic link emails are sent with Cloudflare Email
+        Service.
       </p>
       <h2 className="font-heading text-lg font-semibold tracking-wider uppercase">
         Cookies
@@ -45,8 +47,9 @@ export function PrivacyPage() {
         Retention
       </h2>
       <p>
-        Sessions expire. Account rows stay until you ask me to delete them.
-        Email Jack and I will remove your user record and related sessions.
+        Sessions expire. Guys and their messages stay until you delete them, or
+        until you ask me to delete the account. Email Jack and I will remove
+        your user record and related data.
       </p>
     </article>
   )

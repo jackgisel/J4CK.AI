@@ -26,11 +26,19 @@ export function SiteShell() {
         >
           j4ck.ai
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-end gap-4">
           {isPending ? null : session ? (
-            <NavLink to="/dashboard" className={navLinkClass}>
-              Dashboard
-            </NavLink>
+            <>
+              <NavLink to="/contacts" className={navLinkClass}>
+                Contacts
+              </NavLink>
+              <NavLink to="/messages" className={navLinkClass}>
+                Messages
+              </NavLink>
+              <NavLink to="/dashboard" className={navLinkClass}>
+                Dashboard
+              </NavLink>
+            </>
           ) : (
             <NavLink to="/login" className={navLinkClass}>
               Log in

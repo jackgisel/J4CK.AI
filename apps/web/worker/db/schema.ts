@@ -69,9 +69,42 @@ export const verification = sqliteTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)]
 )
 
+export const guy = sqliteTable(
+  "guy",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull(),
+    backstory: text("backstory").notNull().default(""),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("guy_userId_idx").on(table.userId)]
+)
+
+export const message = sqliteTable(
+  "message",
+  {
+    id: text("id").primaryKey(),
+    guyId: text("guy_id")
+      .notNull()
+      .references(() => guy.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    body: text("body").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    index("message_guyId_createdAt_idx").on(table.guyId, table.createdAt),
+  ]
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  guys: many(guy),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -80,4 +113,13 @@ export const sessionRelations = relations(session, ({ one }) => ({
 
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, { fields: [account.userId], references: [user.id] }),
+}))
+
+export const guyRelations = relations(guy, ({ one, many }) => ({
+  user: one(user, { fields: [guy.userId], references: [user.id] }),
+  messages: many(message),
+}))
+
+export const messageRelations = relations(message, ({ one }) => ({
+  guy: one(guy, { fields: [message.guyId], references: [guy.id] }),
 }))
