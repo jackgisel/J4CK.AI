@@ -71,7 +71,12 @@ function ThreadList() {
                 to={`/messages/${row.id}`}
                 className="flex items-center gap-4 py-4 hover:bg-muted/40"
               >
-                <GuyMark name={row.name} color={row.color} />
+                <GuyMark
+                  color={row.color}
+                  avatarEyes={row.avatarEyes}
+                  avatarFacialHair={row.avatarFacialHair}
+                  avatarHat={row.avatarHat}
+                />
                 <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="flex items-baseline justify-between gap-3">
                     <span className="font-heading text-sm font-semibold tracking-wide uppercase">

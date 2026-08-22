@@ -1,3 +1,5 @@
+import type { AvatarEyes, AvatarFacialHair, AvatarHat } from "@/lib/avatar"
+
 export const GUY_COLORS = [
   "#0f766e",
   "#1c1917",
@@ -24,6 +26,9 @@ export type Guy = {
   name: string
   color: string
   backstory: string
+  avatarEyes: AvatarEyes
+  avatarFacialHair: AvatarFacialHair
+  avatarHat: AvatarHat
   createdAt: string
   updatedAt: string
   lastMessage: Message | null
@@ -33,17 +38,9 @@ export type GuyInput = {
   name: string
   color: string
   backstory: string
-}
-
-export function guyInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) {
-    return "?"
-  }
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase()
-  }
-  return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  avatarEyes: AvatarEyes
+  avatarFacialHair: AvatarFacialHair
+  avatarHat: AvatarHat
 }
 
 export function formatMessageTime(iso: string) {

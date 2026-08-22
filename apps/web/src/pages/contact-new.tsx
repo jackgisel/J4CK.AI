@@ -43,7 +43,7 @@ function NewContactForm() {
         <CardHeader>
           <CardTitle>New guy</CardTitle>
           <CardDescription>
-            A name, a color, and the story they live by.
+            A name, a brick head, and the story they live by.
           </CardDescription>
         </CardHeader>
         <CardContent>

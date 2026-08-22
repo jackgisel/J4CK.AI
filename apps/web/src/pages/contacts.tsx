@@ -46,7 +46,7 @@ function ContactsList() {
             Contacts
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            People you invent. Name, color, backstory.
+            People you invent. Name, a brick head, a backstory.
           </p>
         </div>
         <Button render={<Link to="/contacts/new" />}>New guy</Button>
@@ -69,7 +69,12 @@ function ContactsList() {
                 to={`/contacts/${row.id}`}
                 className="flex items-center gap-4 py-4 hover:bg-muted/40"
               >
-                <GuyMark name={row.name} color={row.color} />
+                <GuyMark
+                  color={row.color}
+                  avatarEyes={row.avatarEyes}
+                  avatarFacialHair={row.avatarFacialHair}
+                  avatarHat={row.avatarHat}
+                />
                 <span className="flex min-w-0 flex-col gap-1">
                   <span className="font-heading text-sm font-semibold tracking-wide uppercase">
                     {row.name}

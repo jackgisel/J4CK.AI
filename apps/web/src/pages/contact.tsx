@@ -145,7 +145,7 @@ function ContactEditor() {
       <Card className="max-w-md">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
-          <CardDescription>Name, color, backstory.</CardDescription>
+          <CardDescription>Name, plastic, face, backstory.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <GuyForm

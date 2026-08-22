@@ -134,7 +134,12 @@ function Thread() {
           to={`/contacts/${guy.id}`}
           className="flex min-w-0 items-center gap-3 hover:opacity-80"
         >
-          <GuyMark name={guy.name} color={guy.color} />
+          <GuyMark
+            color={guy.color}
+            avatarEyes={guy.avatarEyes}
+            avatarFacialHair={guy.avatarFacialHair}
+            avatarHat={guy.avatarHat}
+          />
           <span className="truncate font-heading text-sm font-semibold tracking-wide uppercase">
             {guy.name}
           </span>

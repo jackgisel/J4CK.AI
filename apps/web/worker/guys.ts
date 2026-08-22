@@ -14,6 +14,29 @@ const NAME_MAX = 80
 const BACKSTORY_MAX = 8000
 const BODY_MAX = 4000
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/
+const AVATAR_EYES = [
+  "dots",
+  "wide",
+  "sleepy",
+  "angry",
+  "squint",
+  "glasses",
+] as const
+const AVATAR_FACIAL_HAIR = [
+  "none",
+  "stubble",
+  "mustache",
+  "beard",
+  "goatee",
+] as const
+const AVATAR_HATS = [
+  "none",
+  "cap",
+  "beanie",
+  "hardhat",
+  "tophat",
+  "cowboy",
+] as const
 
 export const guys = new Hono<AppEnv>()
 
@@ -81,6 +104,26 @@ guys.post("/", async (c) => {
     return c.json({ error: backstory.error }, 400)
   }
 
+  const avatarEyes = parseTrait(body.avatarEyes, AVATAR_EYES, "dots", "eyes")
+  if (typeof avatarEyes !== "string") {
+    return c.json({ error: avatarEyes.error }, 400)
+  }
+
+  const avatarFacialHair = parseTrait(
+    body.avatarFacialHair,
+    AVATAR_FACIAL_HAIR,
+    "none",
+    "facial hair"
+  )
+  if (typeof avatarFacialHair !== "string") {
+    return c.json({ error: avatarFacialHair.error }, 400)
+  }
+
+  const avatarHat = parseTrait(body.avatarHat, AVATAR_HATS, "none", "hat")
+  if (typeof avatarHat !== "string") {
+    return c.json({ error: avatarHat.error }, 400)
+  }
+
   const now = new Date()
   const db = createDb(c.env.DB)
   const [created] = await db
@@ -91,6 +134,9 @@ guys.post("/", async (c) => {
       name,
       color,
       backstory,
+      avatarEyes,
+      avatarFacialHair,
+      avatarHat,
       createdAt: now,
       updatedAt: now,
     })
@@ -127,6 +173,9 @@ guys.patch("/:id", async (c) => {
     name?: string
     color?: string
     backstory?: string
+    avatarEyes?: string
+    avatarFacialHair?: string
+    avatarHat?: string
     updatedAt: Date
   } = { updatedAt: new Date() }
 
@@ -154,10 +203,42 @@ guys.patch("/:id", async (c) => {
     patch.backstory = backstory
   }
 
+  if ("avatarEyes" in body) {
+    const avatarEyes = parseTrait(body.avatarEyes, AVATAR_EYES, "dots", "eyes")
+    if (typeof avatarEyes !== "string") {
+      return c.json({ error: avatarEyes.error }, 400)
+    }
+    patch.avatarEyes = avatarEyes
+  }
+
+  if ("avatarFacialHair" in body) {
+    const avatarFacialHair = parseTrait(
+      body.avatarFacialHair,
+      AVATAR_FACIAL_HAIR,
+      "none",
+      "facial hair"
+    )
+    if (typeof avatarFacialHair !== "string") {
+      return c.json({ error: avatarFacialHair.error }, 400)
+    }
+    patch.avatarFacialHair = avatarFacialHair
+  }
+
+  if ("avatarHat" in body) {
+    const avatarHat = parseTrait(body.avatarHat, AVATAR_HATS, "none", "hat")
+    if (typeof avatarHat !== "string") {
+      return c.json({ error: avatarHat.error }, 400)
+    }
+    patch.avatarHat = avatarHat
+  }
+
   if (
     patch.name === undefined &&
     patch.color === undefined &&
-    patch.backstory === undefined
+    patch.backstory === undefined &&
+    patch.avatarEyes === undefined &&
+    patch.avatarFacialHair === undefined &&
+    patch.avatarHat === undefined
   ) {
     return c.json({ error: "Nothing to update" }, 400)
   }
@@ -305,6 +386,21 @@ function parseBackstory(value: unknown) {
   return value
 }
 
+function parseTrait<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  fallback: T,
+  label: string
+) {
+  if (value === undefined || value === null || value === "") {
+    return fallback
+  }
+  if (typeof value !== "string" || !allowed.includes(value as T)) {
+    return { error: `Unknown ${label}` }
+  }
+  return value as T
+}
+
 function parseBody(value: unknown) {
   if (typeof value !== "string") {
     return { error: "Message is required" }
@@ -328,6 +424,9 @@ function serializeGuy(
     name: row.name,
     color: row.color,
     backstory: row.backstory,
+    avatarEyes: row.avatarEyes,
+    avatarFacialHair: row.avatarFacialHair,
+    avatarHat: row.avatarHat,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     lastMessage: last ? serializeMessage(last) : null,

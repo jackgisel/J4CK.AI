@@ -1,25 +1,30 @@
 import { cn } from "@workspace/ui/lib/utils"
-import { guyInitials } from "@/lib/guys"
+import { GuyAvatar } from "@/components/guy-avatar"
+import {
+  asAvatarEyes,
+  asAvatarFacialHair,
+  asAvatarHat,
+  type AvatarSpec,
+} from "@/lib/avatar"
 
 export function GuyMark({
-  name,
   color,
+  avatarEyes,
+  avatarFacialHair,
+  avatarHat,
   className,
-}: {
-  name: string
-  color: string
-  className?: string
-}) {
+}: Partial<AvatarSpec> & { color: string; className?: string }) {
   return (
     <span
-      className={cn(
-        "inline-flex size-10 shrink-0 items-center justify-center text-[0.625rem] font-semibold tracking-widest text-white uppercase",
-        className
-      )}
-      style={{ backgroundColor: color }}
+      className={cn("inline-block size-10 shrink-0", className)}
       aria-hidden
     >
-      {guyInitials(name)}
+      <GuyAvatar
+        color={color}
+        avatarEyes={asAvatarEyes(avatarEyes)}
+        avatarFacialHair={asAvatarFacialHair(avatarFacialHair)}
+        avatarHat={asAvatarHat(avatarHat)}
+      />
     </span>
   )
 }
