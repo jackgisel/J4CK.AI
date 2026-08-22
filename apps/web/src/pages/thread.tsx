@@ -186,8 +186,8 @@ function Thread() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="flex shrink-0 items-center justify-between gap-4">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-4 px-4 pt-4 lg:px-6 lg:pt-6">
         <Link
           to={`/contacts/${guy.id}`}
           className="flex min-w-0 items-center gap-3 hover:opacity-80"
@@ -208,7 +208,7 @@ function Thread() {
       </div>
       <div
         ref={scrollerRef}
-        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-4 lg:px-6"
       >
         {messages.length === 0 && !waiting ? (
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -252,7 +252,10 @@ function Thread() {
           </div>
         ) : null}
       </div>
-      <form className="flex shrink-0 flex-col gap-3" onSubmit={onSubmit}>
+      <form
+        className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-4 lg:px-6"
+        onSubmit={onSubmit}
+      >
         <Textarea
           value={body}
           onChange={(event) => setBody(event.currentTarget.value)}

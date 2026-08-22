@@ -18,6 +18,7 @@ export function AppShell() {
   return (
     <RequireSession>
       <SidebarProvider
+        className="h-svh overflow-hidden"
         style={
           {
             "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -26,12 +27,12 @@ export function AppShell() {
         }
       >
         <AppSidebar variant="inset" />
-        <SidebarInset>
+        <SidebarInset className="min-h-0 overflow-hidden">
           <SiteHeader />
           <div
             className={
               isThread
-                ? "flex min-h-0 flex-1 flex-col overflow-hidden p-4 lg:p-6"
+                ? "flex min-h-0 flex-1 flex-col overflow-hidden"
                 : isDashboard
                   ? "flex min-h-0 flex-1 flex-col overflow-y-auto"
                   : "flex min-h-0 flex-1 flex-col overflow-y-auto p-4 lg:p-6"
