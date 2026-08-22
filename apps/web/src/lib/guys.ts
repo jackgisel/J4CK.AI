@@ -93,7 +93,7 @@ export async function listMessages(id: string) {
 }
 
 export async function sendMessage(id: string, body: string) {
-  const data = await api<{ message: Message; reply: Message | null }>(
+  const data = await api<{ message: Message; replies: Message[] }>(
     `/api/guys/${id}/messages`,
     {
       method: "POST",
@@ -103,18 +103,124 @@ export async function sendMessage(id: string, body: string) {
   return data
 }
 
+export function shouldCatchUp(last: Message | undefined) {
+  if (!last) {
+    return false
+  }
+  if (last.role === "user") {
+    return true
+  }
+  const text = last.body.trim()
+  if (!text || text.length > 280) {
+    return false
+  }
+  return /\b((i['’]?ll|i will|i['’]?m (gonna|going to)) (send|get|check|look|pull|grab|forward|add|do)|let me|hang on|one sec|give me a|on it|checking|coming)\b/i.test(
+    text
+  )
+}
+
 export async function catchUp(id: string) {
-  const data = await api<{ reply: Message | null }>(`/api/guys/${id}/reply`, {
+  const data = await api<{ replies: Message[] }>(`/api/guys/${id}/reply`, {
     method: "POST",
   })
-  return data.reply
+  return data.replies
+}
+
+export type HomeListing = {
+  path: string
+  dirs: string[]
+  files: Array<{ path: string; size: number }>
+}
+
+export type HomeTextFile = {
+  path: string
+  binary: false
+  content: string
+  size: number
+}
+
+export type HomeBinaryFile = {
+  path: string
+  binary: true
+  size: number
+  type: string
+}
+
+export type HomeFile = HomeTextFile | HomeBinaryFile
+
+export async function listHome(id: string, path = "") {
+  const query = new URLSearchParams()
+  if (path) {
+    query.set("path", path)
+  }
+  const suffix = query.toString() ? `?${query}` : ""
+  return api<HomeListing>(`/api/guys/${id}/home${suffix}`)
+}
+
+export async function readHomeFile(id: string, path: string) {
+  const query = new URLSearchParams({ path })
+  return api<HomeFile>(`/api/guys/${id}/home/file?${query}`)
+}
+
+export async function writeHomeFile(id: string, path: string, content: string) {
+  return api<{ path: string; bytes: number }>(`/api/guys/${id}/home/file`, {
+    method: "PUT",
+    body: JSON.stringify({ path, content }),
+  })
+}
+
+export async function uploadHomeFile(id: string, folder: string, file: File) {
+  const form = new FormData()
+  form.set("folder", folder)
+  form.set("file", file)
+  return api<{ path: string; bytes: number }>(`/api/guys/${id}/home/upload`, {
+    method: "POST",
+    body: form,
+  })
+}
+
+export async function deleteHomeFile(id: string, path: string) {
+  const query = new URLSearchParams({ path })
+  return api<{ path: string; deleted: boolean }>(
+    `/api/guys/${id}/home/file?${query}`,
+    { method: "DELETE" }
+  )
+}
+
+export async function createHomeSkill(id: string, name: string, content?: string) {
+  return api<{ path: string; bytes: number; name: string }>(
+    `/api/guys/${id}/home/skills`,
+    {
+      method: "POST",
+      body: JSON.stringify({ name, content }),
+    }
+  )
+}
+
+export async function downloadHomeFile(id: string, path: string) {
+  const query = new URLSearchParams({ path, download: "1" })
+  const response = await fetch(`/api/guys/${id}/home/file?${query}`)
+  if (!response.ok) {
+    const data: unknown = await response.json().catch(() => null)
+    throw new Error(errorMessage(data))
+  }
+  const blob = await response.blob()
+  const name = path.split("/").pop() ?? "file"
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = name
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
     headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(typeof init?.body === "string"
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...init?.headers,
     },
   })

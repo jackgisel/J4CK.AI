@@ -16,6 +16,7 @@ import {
   listMessages,
   catchUp,
   sendMessage,
+  shouldCatchUp,
   type Guy,
   type Message,
 } from "@/lib/guys"
@@ -38,7 +39,7 @@ function Thread() {
   const [submitting, setSubmitting] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!id) {
@@ -53,20 +54,24 @@ function Thread() {
         setGuy(data.guy)
         setMessages(data.messages)
         const last = data.messages.at(-1)
-        if (last?.role !== "user") {
+        if (!shouldCatchUp(last)) {
           return
         }
         setWaiting(true)
         try {
-          const reply = await catchUp(id)
-          if (cancelled || !reply) {
+          const replies = await catchUp(id)
+          if (cancelled) {
             return
           }
-          setMessages((current) =>
-            current.some((row) => row.id === reply.id)
-              ? current
-              : [...current, reply]
-          )
+          await revealReplies(replies, (next) => {
+            if (!cancelled) {
+              setMessages((current) =>
+                current.some((row) => row.id === next.id)
+                  ? current
+                  : [...current, next]
+              )
+            }
+          })
         } catch {
           if (!cancelled) {
             setError("They did not answer")
@@ -95,7 +100,11 @@ function Thread() {
   }, [id])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" })
+    const scroller = scrollerRef.current
+    if (!scroller) {
+      return
+    }
+    scroller.scrollTop = scroller.scrollHeight
   }, [messages.length, waiting])
 
   if (missing || !id) {
@@ -150,16 +159,20 @@ function Thread() {
       },
     ])
     try {
-      const { message: created, reply } = await sendMessage(id, text)
+      const { message: created, replies } = await sendMessage(id, text)
       setMessages((current) => {
         const withoutPending = current.filter((row) => row.id !== pendingId)
-        return reply
-          ? [...withoutPending, created, reply]
-          : [...withoutPending, created]
+        return [...withoutPending, created]
       })
-      if (!reply) {
+      setSubmitting(false)
+      if (replies.length === 0) {
         setError("They did not answer")
+        setWaiting(false)
+        return
       }
+      await revealReplies(replies, (next) => {
+        setMessages((current) => [...current, next])
+      })
     } catch (caught) {
       setMessages((current) => current.filter((row) => row.id !== pendingId))
       setBody(text)
@@ -179,7 +192,7 @@ function Thread() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex shrink-0 items-center justify-between gap-4">
         <Link
           to={`/contacts/${guy.id}`}
           className="flex min-w-0 items-center gap-3 hover:opacity-80"
@@ -198,7 +211,10 @@ function Thread() {
           All
         </Button>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+      <div
+        ref={scrollerRef}
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"
+      >
         {messages.length === 0 && !waiting ? (
           <p className="text-sm leading-relaxed text-muted-foreground">
             Write them. They write back.
@@ -240,9 +256,8 @@ function Thread() {
             </p>
           </div>
         ) : null}
-        <div ref={bottomRef} />
       </div>
-      <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+      <form className="flex shrink-0 flex-col gap-3" onSubmit={onSubmit}>
         <Textarea
           value={body}
           onChange={(event) => setBody(event.currentTarget.value)}
@@ -263,4 +278,26 @@ function Thread() {
       </form>
     </div>
   )
+}
+
+async function revealReplies(
+  replies: Message[],
+  append: (row: Message) => void
+) {
+  for (const [index, reply] of replies.entries()) {
+    if (index > 0) {
+      await pause(typingDelay(reply.body))
+    }
+    append(reply)
+  }
+}
+
+function typingDelay(body: string) {
+  return Math.min(1400, 280 + body.length * 18)
+}
+
+function pause(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms)
+  })
 }

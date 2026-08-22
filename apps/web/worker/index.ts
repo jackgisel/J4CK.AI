@@ -33,4 +33,5 @@ app.get("/api/r2", async (c) => {
   })
 })
 
+export { GuyAgent } from "./agent"
 export default app

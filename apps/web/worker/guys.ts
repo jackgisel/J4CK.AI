@@ -4,7 +4,26 @@ import { Hono, type Context } from "hono"
 import { createAuth } from "./auth"
 import { createDb } from "./db"
 import { guy, message } from "./db/schema"
-import { generateReply, HISTORY_LIMIT } from "./reply"
+import {
+  asGuyHome,
+  defaultSkillMarkdown,
+  deleteFile,
+  deleteHome,
+  ensureHome,
+  getObject,
+  listFiles,
+  listFilesDeep,
+  parseSkillName,
+  putBytes,
+  readFile,
+  seedHome,
+  syncIdentity,
+  toPath,
+  UPLOAD_MAX,
+  writeFile,
+} from "./home"
+import { runGuyTurn } from "./agent"
+import { serializeMessage } from "./turn"
 
 type AppEnv = {
   Bindings: Env
@@ -148,6 +167,8 @@ guys.post("/", async (c) => {
     return c.json({ error: "Could not save" }, 500)
   }
 
+  await seedHome(c.env.BUCKET, asGuyHome(created))
+
   return c.json({ guy: serializeGuy(created, null) }, 201)
 })
 
@@ -157,6 +178,7 @@ guys.get("/:id", async (c) => {
     return c.json({ error: "Not found" }, 404)
   }
 
+  await ensureHome(c.env.BUCKET, asGuyHome(row))
   return c.json({ guy: serializeGuy(row, null) })
 })
 
@@ -256,6 +278,10 @@ guys.patch("/:id", async (c) => {
     return c.json({ error: "Could not save" }, 500)
   }
 
+  if (patch.name !== undefined || patch.backstory !== undefined) {
+    await syncIdentity(c.env.BUCKET, asGuyHome(updated))
+  }
+
   return c.json({ guy: serializeGuy(updated, null) })
 })
 
@@ -267,6 +293,7 @@ guys.delete("/:id", async (c) => {
 
   const db = createDb(c.env.DB)
   await db.delete(guy).where(eq(guy.id, row.id))
+  await deleteHome(c.env.BUCKET, { userId: row.userId, guyId: row.id })
   return c.body(null, 204)
 })
 
@@ -321,15 +348,192 @@ guys.post("/:id/messages", async (c) => {
     return c.json({ error: "Could not send" }, 500)
   }
 
-  const reply = await writeAssistantReply(c.env, c.get("userName"), row)
+  const replies = await runGuyTurn(c.env, c.get("userName"), row)
 
   return c.json(
     {
       message: serializeMessage(created),
-      reply: reply ? serializeMessage(reply) : null,
+      replies,
     },
     201
   )
+})
+
+guys.get("/:id/home", async (c) => {
+  const row = await findOwnedGuy(c)
+  if (!row) {
+    return c.json({ error: "Not found" }, 404)
+  }
+  const home = asGuyHome(row)
+  await ensureHome(c.env.BUCKET, home)
+  try {
+    const listing =
+      c.req.query("deep") === "1"
+        ? await listFilesDeep(c.env.BUCKET, home, c.req.query("path") ?? "")
+        : await listFiles(c.env.BUCKET, home, c.req.query("path") ?? "")
+    return c.json(listing)
+  } catch {
+    return c.json({ error: "Invalid path" }, 400)
+  }
+})
+
+guys.get("/:id/home/file", async (c) => {
+  const row = await findOwnedGuy(c)
+  if (!row) {
+    return c.json({ error: "Not found" }, 404)
+  }
+  const home = asGuyHome(row)
+  await ensureHome(c.env.BUCKET, home)
+  const path = c.req.query("path") ?? ""
+  if (!toPath(path)) {
+    return c.json({ error: "Path is required" }, 400)
+  }
+  const download = c.req.query("download") === "1"
+  try {
+    if (download) {
+      const object = await getObject(c.env.BUCKET, home, path)
+      if (!object) {
+        return c.json({ error: "Not found" }, 404)
+      }
+      const name = toPath(path).split("/").pop() ?? "file"
+      return new Response(object.body, {
+        headers: {
+          "content-type":
+            object.httpMetadata?.contentType ?? "application/octet-stream",
+          "content-disposition": `attachment; filename="${name}"`,
+        },
+      })
+    }
+    const file = await readFile(c.env.BUCKET, home, path)
+    if ("error" in file) {
+      return c.json(file, 404)
+    }
+    return c.json(file)
+  } catch {
+    return c.json({ error: "Invalid path" }, 400)
+  }
+})
+
+guys.put("/:id/home/file", async (c) => {
+  const row = await findOwnedGuy(c)
+  if (!row) {
+    return c.json({ error: "Not found" }, 404)
+  }
+  const home = asGuyHome(row)
+  await ensureHome(c.env.BUCKET, home)
+  const body = await readObject(c)
+  if (!body) {
+    return c.json({ error: "Expected JSON" }, 400)
+  }
+  const path = typeof body.path === "string" ? body.path : ""
+  const content = typeof body.content === "string" ? body.content : ""
+  if (!toPath(path)) {
+    return c.json({ error: "Path is required" }, 400)
+  }
+  try {
+    const written = await writeFile(c.env.BUCKET, home, path, content)
+    if ("error" in written) {
+      return c.json(written, 400)
+    }
+    return c.json(written)
+  } catch {
+    return c.json({ error: "Invalid path" }, 400)
+  }
+})
+
+guys.post("/:id/home/upload", async (c) => {
+  const row = await findOwnedGuy(c)
+  if (!row) {
+    return c.json({ error: "Not found" }, 404)
+  }
+  const home = asGuyHome(row)
+  await ensureHome(c.env.BUCKET, home)
+  let form: FormData
+  try {
+    form = await c.req.formData()
+  } catch {
+    return c.json({ error: "Expected multipart form" }, 400)
+  }
+  const folder = toPath(String(form.get("folder") ?? "files"))
+  const file = form.get("file")
+  if (!(file instanceof File)) {
+    return c.json({ error: "File is required" }, 400)
+  }
+  if (file.size > UPLOAD_MAX) {
+    return c.json({ error: "File too large. Max 10 MB." }, 400)
+  }
+  const name = file.name.replace(/[/\\]/g, "").trim()
+  if (!name) {
+    return c.json({ error: "File name is required" }, 400)
+  }
+  const path = folder ? `${folder}/${name}` : name
+  try {
+    const written = await putBytes(
+      c.env.BUCKET,
+      home,
+      path,
+      await file.arrayBuffer(),
+      file.type
+    )
+    if ("error" in written) {
+      return c.json(written, 400)
+    }
+    return c.json(written)
+  } catch {
+    return c.json({ error: "Invalid path" }, 400)
+  }
+})
+
+guys.delete("/:id/home/file", async (c) => {
+  const row = await findOwnedGuy(c)
+  if (!row) {
+    return c.json({ error: "Not found" }, 404)
+  }
+  const home = asGuyHome(row)
+  const path = c.req.query("path") ?? ""
+  if (!toPath(path)) {
+    return c.json({ error: "Path is required" }, 400)
+  }
+  try {
+    return c.json(await deleteFile(c.env.BUCKET, home, path))
+  } catch {
+    return c.json({ error: "Invalid path" }, 400)
+  }
+})
+
+guys.post("/:id/home/skills", async (c) => {
+  const row = await findOwnedGuy(c)
+  if (!row) {
+    return c.json({ error: "Not found" }, 404)
+  }
+  const home = asGuyHome(row)
+  await ensureHome(c.env.BUCKET, home)
+  const body = await readObject(c)
+  if (!body) {
+    return c.json({ error: "Expected JSON" }, 400)
+  }
+  const parsed = parseSkillName(typeof body.name === "string" ? body.name : "")
+  if (typeof parsed !== "string") {
+    return c.json(parsed, 400)
+  }
+  const content =
+    typeof body.content === "string" && body.content.trim()
+      ? body.content
+      : defaultSkillMarkdown(parsed)
+  try {
+    const written = await writeFile(
+      c.env.BUCKET,
+      home,
+      `skills/${parsed}/SKILL.md`,
+      content
+    )
+    if ("error" in written) {
+      return c.json(written, 400)
+    }
+    return c.json({ ...written, name: parsed })
+  } catch {
+    return c.json({ error: "Invalid path" }, 400)
+  }
 })
 
 guys.post("/:id/reply", async (c) => {
@@ -338,46 +542,9 @@ guys.post("/:id/reply", async (c) => {
     return c.json({ error: "Not found" }, 404)
   }
 
-  const reply = await writeAssistantReply(c.env, c.get("userName"), row)
-  return c.json({ reply: reply ? serializeMessage(reply) : null })
+  const replies = await runGuyTurn(c.env, c.get("userName"), row)
+  return c.json({ replies })
 })
-
-async function writeAssistantReply(
-  env: Env,
-  userName: string,
-  row: typeof guy.$inferSelect
-) {
-  const db = createDb(env.DB)
-  const recent = await db
-    .select()
-    .from(message)
-    .where(eq(message.guyId, row.id))
-    .orderBy(desc(message.createdAt))
-    .limit(HISTORY_LIMIT)
-
-  if (!recent[0] || recent[0].role !== "user") {
-    return null
-  }
-
-  const history = recent.reverse()
-  const replyText = await generateReply(env.AI, row, userName, history)
-  if (!replyText) {
-    return null
-  }
-
-  const [reply] = await db
-    .insert(message)
-    .values({
-      id: crypto.randomUUID(),
-      guyId: row.id,
-      role: "assistant",
-      body: replyText,
-      createdAt: new Date(),
-    })
-    .returning()
-
-  return reply ?? null
-}
 
 async function findOwnedGuy(c: Context<AppEnv>) {
   const id = c.req.param("id")
@@ -487,15 +654,5 @@ function serializeGuy(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     lastMessage: last ? serializeMessage(last) : null,
-  }
-}
-
-function serializeMessage(row: typeof message.$inferSelect) {
-  return {
-    id: row.id,
-    guyId: row.guyId,
-    role: row.role,
-    body: row.body,
-    createdAt: row.createdAt.toISOString(),
   }
 }

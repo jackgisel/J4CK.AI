@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 import { GuyForm } from "@/components/guy-form"
+import { GuyHome } from "@/components/guy-home"
 import { RequireSession } from "@/components/require-session"
 import {
   deleteGuy,
@@ -166,6 +167,7 @@ function ContactEditor() {
           </Button>
         </CardContent>
       </Card>
+      <GuyHome guyId={guy.id} />
     </div>
   )
 }

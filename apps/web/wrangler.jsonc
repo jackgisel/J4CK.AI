@@ -25,6 +25,20 @@
   "ai": {
     "binding": "AI"
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GuyAgent",
+        "class_name": "GuyAgent"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["GuyAgent"]
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
