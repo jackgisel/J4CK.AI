@@ -1,72 +1,76 @@
-import { Navigate, useNavigate } from "react-router"
+import { useEffect, useState } from "react"
 
-import { Button } from "@workspace/ui/components/button"
+import { ChartAreaInteractive } from "@/components/chart-area-interactive"
+import { GuysTable } from "@/components/guys-table"
+import { SectionCards } from "@/components/section-cards"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
-import { authClient } from "@/lib/auth-client"
+  getGuyStats,
+  listGuys,
+  type Guy,
+  type GuyDayStat,
+} from "@/lib/guys"
 
 export function DashboardPage() {
-  const { data: session, isPending } = authClient.useSession()
-  const navigate = useNavigate()
+  const [guys, setGuys] = useState<Guy[] | null>(null)
+  const [series, setSeries] = useState<GuyDayStat[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  if (isPending) {
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([listGuys(), getGuyStats()])
+      .then(([rows, stats]) => {
+        if (cancelled) {
+          return
+        }
+        setGuys(rows)
+        setSeries(stats.series)
+      })
+      .catch((caught: unknown) => {
+        if (!cancelled) {
+          setError(
+            caught instanceof Error ? caught.message : "Could not load dashboard"
+          )
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (error) {
     return (
-      <p className="flex flex-1 items-center text-sm text-muted-foreground">
-        Loading
+      <p className="px-4 py-6 text-sm text-destructive lg:px-6" role="alert">
+        {error}
       </p>
     )
   }
 
-  if (!session) {
-    return <Navigate to="/login" replace />
+  if (guys === null || series === null) {
+    return (
+      <p className="px-4 py-6 text-sm text-muted-foreground lg:px-6">Loading</p>
+    )
   }
 
-  async function signOut() {
-    await authClient.signOut()
-    navigate("/")
-  }
+  const active = guys.filter((row) => row.lastMessage).length
+  const waiting = guys.filter((row) => row.lastMessage?.role === "user").length
+  const quiet = guys.filter((row) => !row.lastMessage).length
 
   return (
-    <div className="flex flex-1 flex-col justify-center gap-8">
-      <div className="flex max-w-xl flex-col gap-2">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-5xl">
-          Dashboard
-        </h1>
-        <p className="text-base leading-relaxed text-muted-foreground">
-          You are signed in. This is the logged-in area.
-        </p>
+    <div className="flex flex-1 flex-col">
+      <div className="@container/main flex flex-1 flex-col gap-2">
+        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+          <SectionCards
+            guys={guys.length}
+            active={active}
+            waiting={waiting}
+            quiet={quiet}
+          />
+          <div className="px-4 lg:px-6">
+            <ChartAreaInteractive series={series} />
+          </div>
+          <GuysTable guys={guys} />
+        </div>
       </div>
-
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle>Account</CardTitle>
-          <CardDescription>Magic link session on D1.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <dl className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <dt className="text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
-                Email
-              </dt>
-              <dd>{session.user.email}</dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
-                Name
-              </dt>
-              <dd>{session.user.name}</dd>
-            </div>
-          </dl>
-          <Button variant="outline" onClick={signOut}>
-            Sign out
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   )
 }

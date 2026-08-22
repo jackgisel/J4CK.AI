@@ -11,7 +11,6 @@ import {
 } from "@workspace/ui/components/card"
 import { GuyForm } from "@/components/guy-form"
 import { GuyHome } from "@/components/guy-home"
-import { RequireSession } from "@/components/require-session"
 import {
   deleteGuy,
   getGuy,
@@ -21,11 +20,7 @@ import {
 } from "@/lib/guys"
 
 export function ContactPage() {
-  return (
-    <RequireSession>
-      <ContactEditor />
-    </RequireSession>
-  )
+  return <ContactEditor />
 }
 
 function ContactEditor() {

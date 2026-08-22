@@ -3,18 +3,9 @@ import { Link } from "react-router"
 
 import { Button } from "@workspace/ui/components/button"
 import { GuyMark } from "@/components/guy-mark"
-import { RequireSession } from "@/components/require-session"
 import { listGuys, type Guy } from "@/lib/guys"
 
 export function ContactsPage() {
-  return (
-    <RequireSession>
-      <ContactsList />
-    </RequireSession>
-  )
-}
-
-function ContactsList() {
   const [guys, setGuys] = useState<Guy[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 

@@ -3,15 +3,10 @@ import { Link } from "react-router"
 
 import { Button } from "@workspace/ui/components/button"
 import { GuyMark } from "@/components/guy-mark"
-import { RequireSession } from "@/components/require-session"
 import { formatMessageTime, listGuys, type Guy } from "@/lib/guys"
 
 export function MessagesPage() {
-  return (
-    <RequireSession>
-      <ThreadList />
-    </RequireSession>
-  )
+  return <ThreadList />
 }
 
 function ThreadList() {

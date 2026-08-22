@@ -9,15 +9,10 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 import { GuyForm } from "@/components/guy-form"
-import { RequireSession } from "@/components/require-session"
 import { createGuy, type GuyInput } from "@/lib/guys"
 
 export function NewContactPage() {
-  return (
-    <RequireSession>
-      <NewContactForm />
-    </RequireSession>
-  )
+  return <NewContactForm />
 }
 
 function NewContactForm() {

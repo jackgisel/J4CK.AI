@@ -58,9 +58,23 @@ export function formatMessageTime(iso: string) {
   })
 }
 
+export type GuyDayStat = {
+  date: string
+  sent: number
+  received: number
+}
+
+export type GuyStats = {
+  series: GuyDayStat[]
+}
+
 export async function listGuys() {
   const data = await api<{ guys: Guy[] }>("/api/guys")
   return data.guys
+}
+
+export async function getGuyStats() {
+  return api<GuyStats>("/api/guys/stats")
 }
 
 export async function getGuy(id: string) {

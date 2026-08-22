@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm"
+import { and, asc, desc, eq, gte, inArray } from "drizzle-orm"
 import { Hono, type Context } from "hono"
 
 import { createAuth } from "./auth"
@@ -102,6 +102,64 @@ guys.get("/", async (c) => {
   return c.json({
     guys: rows.map((row) => serializeGuy(row, lastByGuy.get(row.id) ?? null)),
   })
+})
+
+guys.get("/stats", async (c) => {
+  const db = createDb(c.env.DB)
+  const userId = c.get("userId")
+  const now = new Date()
+  const todayUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  )
+  const days = 90
+  const startMs = todayUtc - (days - 1) * 86_400_000
+  const start = new Date(startMs)
+
+  const series: Array<{ date: string; sent: number; received: number }> = []
+  const index = new Map<
+    string,
+    { date: string; sent: number; received: number }
+  >()
+  for (let i = 0; i < days; i++) {
+    const date = new Date(startMs + i * 86_400_000).toISOString().slice(0, 10)
+    const point = { date, sent: 0, received: 0 }
+    series.push(point)
+    index.set(date, point)
+  }
+
+  const owned = await db
+    .select({ id: guy.id })
+    .from(guy)
+    .where(eq(guy.userId, userId))
+  const ids = owned.map((row) => row.id)
+  if (ids.length === 0) {
+    return c.json({ series })
+  }
+
+  const rows = await db
+    .select({
+      role: message.role,
+      createdAt: message.createdAt,
+    })
+    .from(message)
+    .where(and(inArray(message.guyId, ids), gte(message.createdAt, start)))
+
+  for (const row of rows) {
+    const date = row.createdAt.toISOString().slice(0, 10)
+    const point = index.get(date)
+    if (!point) {
+      continue
+    }
+    if (row.role === "user") {
+      point.sent += 1
+    } else {
+      point.received += 1
+    }
+  }
+
+  return c.json({ series })
 })
 
 guys.post("/", async (c) => {

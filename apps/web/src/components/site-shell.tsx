@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useLocation } from "react-router"
+import { Link, NavLink, Outlet } from "react-router"
 
 import { ConsentBanner } from "@/components/consent-banner"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -11,8 +11,6 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function SiteShell() {
   const { data: session, isPending } = authClient.useSession()
-  const { pathname } = useLocation()
-  const isThread = /^\/messages\/[^/]+$/.test(pathname)
 
   return (
     <div className="relative flex h-svh flex-col overflow-hidden bg-background">
@@ -30,17 +28,9 @@ export function SiteShell() {
         </Link>
         <div className="flex flex-wrap items-center justify-end gap-4">
           {isPending ? null : session ? (
-            <>
-              <NavLink to="/contacts" className={navLinkClass}>
-                Contacts
-              </NavLink>
-              <NavLink to="/messages" className={navLinkClass}>
-                Messages
-              </NavLink>
-              <NavLink to="/dashboard" className={navLinkClass}>
-                Dashboard
-              </NavLink>
-            </>
+            <NavLink to="/dashboard" className={navLinkClass}>
+              Dashboard
+            </NavLink>
           ) : (
             <NavLink to="/login" className={navLinkClass}>
               Log in
@@ -50,13 +40,7 @@ export function SiteShell() {
         </div>
       </header>
 
-      <main
-        className={`relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 md:px-10 ${
-          isThread
-            ? "overflow-hidden py-4"
-            : "overflow-y-auto py-16"
-        }`}
-      >
+      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto px-6 py-16 md:px-10">
         <Outlet />
       </main>
 

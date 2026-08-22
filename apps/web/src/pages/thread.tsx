@@ -10,7 +10,6 @@ import { Link, useParams } from "react-router"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { GuyMark } from "@/components/guy-mark"
-import { RequireSession } from "@/components/require-session"
 import {
   formatMessageTime,
   listMessages,
@@ -22,11 +21,7 @@ import {
 } from "@/lib/guys"
 
 export function ThreadPage() {
-  return (
-    <RequireSession>
-      <Thread />
-    </RequireSession>
-  )
+  return <Thread />
 }
 
 function Thread() {
