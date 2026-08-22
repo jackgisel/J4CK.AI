@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { Navigate } from "react-router"
 
+import { PublicChrome } from "@/components/site-shell"
 import { authClient } from "@/lib/auth-client"
 
 export function RequireSession({ children }: { children: ReactNode }) {
@@ -8,9 +9,11 @@ export function RequireSession({ children }: { children: ReactNode }) {
 
   if (isPending) {
     return (
-      <p className="flex flex-1 items-center text-sm text-muted-foreground">
-        Loading
-      </p>
+      <PublicChrome>
+        <p className="flex flex-1 items-center text-sm text-muted-foreground">
+          Loading…
+        </p>
+      </PublicChrome>
     )
   }
 

@@ -32,14 +32,9 @@ export function ContactsPage() {
   return (
     <div className="flex flex-1 flex-col gap-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex max-w-xl flex-col gap-2">
-          <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-5xl">
-            Contacts
-          </h1>
-          <p className="text-base leading-relaxed text-muted-foreground">
-            People you invent. Name, a brick head, a backstory.
-          </p>
-        </div>
+        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
+          People you invent. Name, a brick head, a backstory.
+        </p>
         <Button render={<Link to="/contacts/new" />}>New guy</Button>
       </div>
       {error ? (
@@ -47,7 +42,7 @@ export function ContactsPage() {
           {error}
         </p>
       ) : guys === null ? (
-        <p className="text-sm text-muted-foreground">Loading</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : guys.length === 0 ? (
         <p className="text-sm leading-relaxed text-muted-foreground">
           Nobody here yet. Make one.

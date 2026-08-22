@@ -1,6 +1,10 @@
+import { useState, type ReactNode } from "react"
 import { Link, NavLink, Outlet } from "react-router"
 
-import { ConsentBanner } from "@/components/consent-banner"
+import {
+  ConsentBanner,
+  hasAcceptedConsent,
+} from "@/components/consent-banner"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { authClient } from "@/lib/auth-client"
 
@@ -10,7 +14,16 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 export function SiteShell() {
-  const { data: session, isPending } = authClient.useSession()
+  return (
+    <PublicChrome>
+      <Outlet />
+    </PublicChrome>
+  )
+}
+
+export function PublicChrome({ children }: { children: ReactNode }) {
+  const { data: session } = authClient.useSession()
+  const [accepted, setAccepted] = useState(hasAcceptedConsent)
 
   return (
     <div className="relative flex h-svh flex-col overflow-hidden bg-background">
@@ -27,7 +40,7 @@ export function SiteShell() {
           j4ck.ai
         </Link>
         <div className="flex flex-wrap items-center justify-end gap-4">
-          {isPending ? null : session ? (
+          {session ? (
             <NavLink to="/dashboard" className={navLinkClass}>
               Dashboard
             </NavLink>
@@ -41,10 +54,14 @@ export function SiteShell() {
       </header>
 
       <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto px-6 py-16 md:px-10">
-        <Outlet />
+        {children}
       </main>
 
-      <footer className="relative z-10 flex shrink-0 items-center gap-5 px-6 py-5 md:px-10">
+      <footer
+        className={`relative z-10 flex shrink-0 items-center gap-5 px-6 py-5 md:px-10 ${
+          accepted ? "" : "pb-24"
+        }`}
+      >
         <NavLink to="/tos" className={navLinkClass}>
           Terms
         </NavLink>
@@ -53,7 +70,7 @@ export function SiteShell() {
         </NavLink>
       </footer>
 
-      <ConsentBanner />
+      <ConsentBanner accepted={accepted} onAgree={() => setAccepted(true)} />
     </div>
   )
 }

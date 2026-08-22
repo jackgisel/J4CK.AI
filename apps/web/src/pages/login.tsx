@@ -81,7 +81,9 @@ export function LoginPage() {
                   type="email"
                   name="email"
                   autoComplete="email"
+                  spellCheck={false}
                   required
+                  className="min-h-10"
                   value={email}
                   onChange={(event) => setEmail(event.currentTarget.value)}
                 />
@@ -91,8 +93,8 @@ export function LoginPage() {
                   {error}
                 </p>
               ) : null}
-              <Button type="submit" disabled={submitting || isPending}>
-                {submitting ? "Sending" : "Email me a link"}
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Sending…" : "Email me a link"}
               </Button>
             </form>
           )}

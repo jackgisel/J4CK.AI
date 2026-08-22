@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -10,8 +11,8 @@ import { Link, useParams } from "react-router"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { GuyMark } from "@/components/guy-mark"
+import { useSetThreadTitle } from "@/components/thread-title"
 import {
-  formatMessageTime,
   listMessages,
   catchUp,
   sendMessage,
@@ -26,6 +27,7 @@ export function ThreadPage() {
 
 function Thread() {
   const { id } = useParams()
+  const setThreadTitle = useSetThreadTitle()
   const [guy, setGuy] = useState<Guy | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [missing, setMissing] = useState(false)
@@ -35,6 +37,11 @@ function Thread() {
   const [waiting, setWaiting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setThreadTitle(guy?.name ?? null)
+    return () => setThreadTitle(null)
+  }, [guy, setThreadTitle])
 
   useEffect(() => {
     if (!id) {
@@ -129,7 +136,7 @@ function Thread() {
   }
 
   if (!guy) {
-    return <p className="text-sm text-muted-foreground">Loading</p>
+    return <p className="text-sm text-muted-foreground">Loading…</p>
   }
 
   async function onSubmit(event?: FormEvent) {
@@ -215,27 +222,39 @@ function Thread() {
             Write them. They write back.
           </p>
         ) : (
-          messages.map((row) => (
-            <div
-              key={row.id}
-              className={`flex flex-col gap-1 ${
-                row.role === "user" ? "items-end" : "items-start"
-              }`}
-            >
-              <p
-                className={`max-w-[85%] whitespace-pre-wrap px-3 py-2 text-sm leading-relaxed ${
-                  row.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
-                }`}
-              >
-                {row.body}
-              </p>
-              <span className="text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
-                {formatMessageTime(row.createdAt)}
-              </span>
-            </div>
-          ))
+          messages.map((row, index) => {
+            const previous = messages[index - 1]
+            const showDay =
+              !previous || messageDay(previous.createdAt) !== messageDay(row.createdAt)
+
+            return (
+              <Fragment key={row.id}>
+                {showDay ? (
+                  <p className="py-1 text-center text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
+                    {formatDayLabel(row.createdAt)}
+                  </p>
+                ) : null}
+                <div
+                  className={`flex flex-col gap-1 ${
+                    row.role === "user" ? "items-end" : "items-start"
+                  }`}
+                >
+                  <p
+                    className={`max-w-[85%] whitespace-pre-wrap px-3 py-2 text-sm leading-relaxed ${
+                      row.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    }`}
+                  >
+                    {row.body}
+                  </p>
+                  <span className="text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
+                    {formatClock(row.createdAt)}
+                  </span>
+                </div>
+              </Fragment>
+            )
+          })
         )}
         {waiting ? (
           <div className="flex flex-col items-start gap-1">
@@ -253,26 +272,32 @@ function Thread() {
         ) : null}
       </div>
       <form
-        className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-4 lg:px-6"
+        className="flex shrink-0 flex-col gap-2 border-t border-border px-4 py-3 lg:px-6"
         onSubmit={onSubmit}
       >
-        <Textarea
-          value={body}
-          onChange={(event) => setBody(event.currentTarget.value)}
-          onKeyDown={onKeyDown}
-          className="max-h-40"
-          rows={3}
-          placeholder={`Write ${guy.name}`}
-          disabled={submitting || waiting}
-        />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={submitting || waiting || !body.trim()}>
-          {submitting ? "Sending" : "Send"}
-        </Button>
+        <div className="flex items-end gap-2">
+          <Textarea
+            value={body}
+            onChange={(event) => setBody(event.currentTarget.value)}
+            onKeyDown={onKeyDown}
+            className="min-h-9 max-h-32 flex-1 py-2"
+            rows={1}
+            placeholder={`Write ${guy.name}`}
+            disabled={submitting || waiting}
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={submitting || waiting || !body.trim()}
+          >
+            {submitting ? "Sending…" : "Send"}
+          </Button>
+        </div>
       </form>
     </div>
   )
@@ -297,5 +322,24 @@ function typingDelay(body: string) {
 function pause(ms: number) {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, ms)
+  })
+}
+
+function messageDay(iso: string) {
+  const date = new Date(iso)
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+function formatDayLabel(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  })
+}
+
+function formatClock(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
   })
 }

@@ -61,21 +61,25 @@ export function LandingPage() {
   return (
     <div className="flex flex-1 flex-col justify-center gap-10">
       <div className="flex max-w-xl flex-col gap-4">
-        <Badge variant="secondary">Worker + D1</Badge>
         <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-6xl">
           Jack Gisel
         </h1>
         <p className="max-w-md text-base leading-relaxed text-muted-foreground">
-          A small site on Cloudflare. Sign in with a link sent to your email.
-          Sessions live in D1. Files live in R2.
+          Invent people. Give them a brick head and a backstory. Then text
+          them.
         </p>
-        {isPending ? null : (
-          <div>
+        <p className="text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
+          Worker, D1, R2
+        </p>
+        <div>
+          {isPending ? (
+            <Button disabled>Log in</Button>
+          ) : (
             <Button render={<Link to={session ? "/dashboard" : "/login"} />}>
               {session ? "Open dashboard" : "Log in"}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Card className="max-w-md">
