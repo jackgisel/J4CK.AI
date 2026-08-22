@@ -139,7 +139,7 @@ export function GuyForm({
           rows={8}
           value={backstory}
           onChange={(event) => setBackstory(event.currentTarget.value)}
-          placeholder="Who they are. This is the system prompt."
+          placeholder="Who they are. They write as this."
         />
       </div>
       {error ? (

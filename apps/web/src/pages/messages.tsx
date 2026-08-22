@@ -46,7 +46,7 @@ function ThreadList() {
             Messages
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            Your side of the thread. They do not write back yet.
+            Text them. They write back.
           </p>
         </div>
         <Button variant="outline" render={<Link to="/contacts" />}>

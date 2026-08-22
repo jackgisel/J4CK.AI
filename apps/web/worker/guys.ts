@@ -4,10 +4,11 @@ import { Hono, type Context } from "hono"
 import { createAuth } from "./auth"
 import { createDb } from "./db"
 import { guy, message } from "./db/schema"
+import { generateReply, HISTORY_LIMIT } from "./reply"
 
 type AppEnv = {
   Bindings: Env
-  Variables: { userId: string }
+  Variables: { userId: string; userName: string }
 }
 
 const NAME_MAX = 80
@@ -50,6 +51,7 @@ guys.use("*", async (c, next) => {
   }
 
   c.set("userId", session.user.id)
+  c.set("userName", session.user.name)
   await next()
 })
 
@@ -319,8 +321,63 @@ guys.post("/:id/messages", async (c) => {
     return c.json({ error: "Could not send" }, 500)
   }
 
-  return c.json({ message: serializeMessage(created) }, 201)
+  const reply = await writeAssistantReply(c.env, c.get("userName"), row)
+
+  return c.json(
+    {
+      message: serializeMessage(created),
+      reply: reply ? serializeMessage(reply) : null,
+    },
+    201
+  )
 })
+
+guys.post("/:id/reply", async (c) => {
+  const row = await findOwnedGuy(c)
+  if (!row) {
+    return c.json({ error: "Not found" }, 404)
+  }
+
+  const reply = await writeAssistantReply(c.env, c.get("userName"), row)
+  return c.json({ reply: reply ? serializeMessage(reply) : null })
+})
+
+async function writeAssistantReply(
+  env: Env,
+  userName: string,
+  row: typeof guy.$inferSelect
+) {
+  const db = createDb(env.DB)
+  const recent = await db
+    .select()
+    .from(message)
+    .where(eq(message.guyId, row.id))
+    .orderBy(desc(message.createdAt))
+    .limit(HISTORY_LIMIT)
+
+  if (!recent[0] || recent[0].role !== "user") {
+    return null
+  }
+
+  const history = recent.reverse()
+  const replyText = await generateReply(env.AI, row, userName, history)
+  if (!replyText) {
+    return null
+  }
+
+  const [reply] = await db
+    .insert(message)
+    .values({
+      id: crypto.randomUUID(),
+      guyId: row.id,
+      role: "assistant",
+      body: replyText,
+      createdAt: new Date(),
+    })
+    .returning()
+
+  return reply ?? null
+}
 
 async function findOwnedGuy(c: Context<AppEnv>) {
   const id = c.req.param("id")

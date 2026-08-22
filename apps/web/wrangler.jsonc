@@ -22,6 +22,9 @@
       "bucket_name": "j4ck-ai"
     }
   ],
+  "ai": {
+    "binding": "AI"
+  },
   "d1_databases": [
     {
       "binding": "DB",

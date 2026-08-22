@@ -14,6 +14,7 @@ import { RequireSession } from "@/components/require-session"
 import {
   formatMessageTime,
   listMessages,
+  catchUp,
   sendMessage,
   type Guy,
   type Message,
@@ -35,6 +36,7 @@ function Thread() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [body, setBody] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [waiting, setWaiting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -44,10 +46,35 @@ function Thread() {
     }
     let cancelled = false
     listMessages(id)
-      .then((data) => {
-        if (!cancelled) {
-          setGuy(data.guy)
-          setMessages(data.messages)
+      .then(async (data) => {
+        if (cancelled) {
+          return
+        }
+        setGuy(data.guy)
+        setMessages(data.messages)
+        const last = data.messages.at(-1)
+        if (last?.role !== "user") {
+          return
+        }
+        setWaiting(true)
+        try {
+          const reply = await catchUp(id)
+          if (cancelled || !reply) {
+            return
+          }
+          setMessages((current) =>
+            current.some((row) => row.id === reply.id)
+              ? current
+              : [...current, reply]
+          )
+        } catch {
+          if (!cancelled) {
+            setError("They did not answer")
+          }
+        } finally {
+          if (!cancelled) {
+            setWaiting(false)
+          }
         }
       })
       .catch((caught: unknown) => {
@@ -69,7 +96,7 @@ function Thread() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" })
-  }, [messages.length])
+  }, [messages.length, waiting])
 
   if (missing || !id) {
     return (
@@ -104,19 +131,42 @@ function Thread() {
   async function onSubmit(event?: FormEvent) {
     event?.preventDefault()
     const text = body.trim()
-    if (!id || !text || submitting) {
+    if (!id || !text || submitting || waiting) {
       return
     }
+    const pendingId = `pending-${crypto.randomUUID()}`
     setSubmitting(true)
+    setWaiting(true)
     setError(null)
+    setBody("")
+    setMessages((current) => [
+      ...current,
+      {
+        id: pendingId,
+        guyId: id,
+        role: "user",
+        body: text,
+        createdAt: new Date().toISOString(),
+      },
+    ])
     try {
-      const created = await sendMessage(id, text)
-      setMessages((current) => [...current, created])
-      setBody("")
-      setSubmitting(false)
+      const { message: created, reply } = await sendMessage(id, text)
+      setMessages((current) => {
+        const withoutPending = current.filter((row) => row.id !== pendingId)
+        return reply
+          ? [...withoutPending, created, reply]
+          : [...withoutPending, created]
+      })
+      if (!reply) {
+        setError("They did not answer")
+      }
     } catch (caught) {
+      setMessages((current) => current.filter((row) => row.id !== pendingId))
+      setBody(text)
       setError(caught instanceof Error ? caught.message : "Could not send")
+    } finally {
       setSubmitting(false)
+      setWaiting(false)
     }
   }
 
@@ -149,9 +199,9 @@ function Thread() {
         </Button>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !waiting ? (
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Nothing here yet. They can wait.
+            Write them. They write back.
           </p>
         ) : (
           messages.map((row) => (
@@ -162,7 +212,7 @@ function Thread() {
               }`}
             >
               <p
-                className={`max-w-[85%] px-3 py-2 text-sm leading-relaxed ${
+                className={`max-w-[85%] whitespace-pre-wrap px-3 py-2 text-sm leading-relaxed ${
                   row.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-foreground"
@@ -176,6 +226,20 @@ function Thread() {
             </div>
           ))
         )}
+        {waiting ? (
+          <div className="flex flex-col items-start gap-1">
+            <p
+              className="bg-muted px-3 py-2.5 text-muted-foreground"
+              aria-label={`${guy.name} is writing`}
+            >
+              <span className="inline-flex items-center gap-1">
+                <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-300ms]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-150ms]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-current" />
+              </span>
+            </p>
+          </div>
+        ) : null}
         <div ref={bottomRef} />
       </div>
       <form className="flex flex-col gap-3" onSubmit={onSubmit}>
@@ -186,14 +250,14 @@ function Thread() {
           className="max-h-40"
           rows={3}
           placeholder={`Write ${guy.name}`}
-          disabled={submitting}
+          disabled={submitting || waiting}
         />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={submitting || !body.trim()}>
+        <Button type="submit" disabled={submitting || waiting || !body.trim()}>
           {submitting ? "Sending" : "Send"}
         </Button>
       </form>

@@ -93,11 +93,21 @@ export async function listMessages(id: string) {
 }
 
 export async function sendMessage(id: string, body: string) {
-  const data = await api<{ message: Message }>(`/api/guys/${id}/messages`, {
+  const data = await api<{ message: Message; reply: Message | null }>(
+    `/api/guys/${id}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }
+  )
+  return data
+}
+
+export async function catchUp(id: string) {
+  const data = await api<{ reply: Message | null }>(`/api/guys/${id}/reply`, {
     method: "POST",
-    body: JSON.stringify({ body }),
   })
-  return data.message
+  return data.reply
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
