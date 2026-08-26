@@ -1,9 +1,22 @@
 #!/usr/bin/env bun
 
-import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  stat,
+  writeFile,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { dirname, join, relative, resolve } from "node:path"
+import { basename, dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+
+import {
+  inspectRepoLayout,
+  mapRepoPath,
+  skillSlug,
+} from "../worker/import-repo"
 
 const BUCKET = "j4ck-ai"
 const INDEX = ".sync.json"
@@ -14,13 +27,14 @@ type Args = {
   dir: string
   pull: boolean
   local: boolean
+  filesOnly: boolean
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   if (!args) {
     console.error(
-      "Usage: bun run --filter web sync -- --guy <id> --dir ~/path/to/books [--pull] [--local]"
+      "Usage: bun run --filter web sync -- --guy <id> --dir ~/path/to/books [--pull] [--local] [--files-only]"
     )
     process.exit(1)
   }
@@ -33,11 +47,12 @@ async function main() {
   }
 
   const userId = await lookupUserId(args.guy, args.local)
-  const prefix = `guys/${userId}/${args.guy}/files/`
+  const filesPrefix = `guys/${userId}/${args.guy}/files/`
+  const homePrefix = `guys/${userId}/${args.guy}/`
   const remoteFlag = args.local ? "--local" : "--remote"
 
   if (args.pull) {
-    const rels = await remoteRelPaths(prefix, dir, remoteFlag)
+    const rels = await remoteRelPaths(filesPrefix, dir, remoteFlag)
     if (rels.length === 0) {
       console.log("Nothing to pull. Push once or upload in the cabinet first.")
       return
@@ -49,7 +64,7 @@ async function main() {
         "r2",
         "object",
         "get",
-        `${BUCKET}/${prefix}${rel}`,
+        `${BUCKET}/${filesPrefix}${rel}`,
         "--file",
         dest,
         remoteFlag,
@@ -72,22 +87,44 @@ async function main() {
       continue
     }
     rels.push(rel)
+  }
+  const layout = inspectRepoLayout(rels)
+  const asRepo =
+    !args.filesOnly &&
+    (layout.hasSkillsDir ||
+      layout.hasCursorSkills ||
+      layout.hasRootSkill ||
+      rels.some((rel) => rel === "identity.md" || rel.startsWith("hooks/")))
+  const repoSlug = skillSlug(basename(dir)) ?? "project"
+
+  const pushed: string[] = []
+  for (const rel of rels) {
+    const mapped = asRepo ? mapRepoPath(rel, layout, repoSlug) : `files/${rel}`
+    if (typeof mapped !== "string") {
+      continue
+    }
+    const file = join(dir, rel)
     await wrangler([
       "r2",
       "object",
       "put",
-      `${BUCKET}/${prefix}${rel}`,
+      `${BUCKET}/${homePrefix}${mapped}`,
       "--file",
       file,
       "--content-type",
       contentType(rel),
       remoteFlag,
     ])
-    console.log(`push ${rel}`)
+    pushed.push(asRepo ? mapped : rel)
+    console.log(`push ${mapped}`)
   }
 
-  const known = new Set(await readIndex(prefix, remoteFlag))
-  for (const rel of rels) {
+  if (asRepo) {
+    return
+  }
+
+  const known = new Set(await readIndex(filesPrefix, remoteFlag))
+  for (const rel of pushed) {
     known.add(rel)
   }
   const indexPath = join(await mkdtemp(join(tmpdir(), "guy-sync-")), INDEX)
@@ -99,7 +136,7 @@ async function main() {
     "r2",
     "object",
     "put",
-    `${BUCKET}/${prefix}${INDEX}`,
+    `${BUCKET}/${filesPrefix}${INDEX}`,
     "--file",
     indexPath,
     "--content-type",
@@ -109,7 +146,13 @@ async function main() {
 }
 
 function parseArgs(argv: string[]): Args | null {
-  const args: Args = { guy: "", dir: "", pull: false, local: false }
+  const args: Args = {
+    guy: "",
+    dir: "",
+    pull: false,
+    local: false,
+    filesOnly: false,
+  }
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i]
     if (token === "--pull") {
@@ -118,6 +161,10 @@ function parseArgs(argv: string[]): Args | null {
     }
     if (token === "--local") {
       args.local = true
+      continue
+    }
+    if (token === "--files-only") {
+      args.filesOnly = true
       continue
     }
     if (token === "--guy") {
@@ -280,7 +327,9 @@ async function wrangler(args: string[], capture = false) {
   const stderr = capture ? await new Response(proc.stderr).text() : ""
   const code = await proc.exited
   if (code !== 0) {
-    throw new Error(stderr.trim() || `wrangler ${args.join(" ")} failed (${code})`)
+    throw new Error(
+      stderr.trim() || `wrangler ${args.join(" ")} failed (${code})`
+    )
   }
   return stdout
 }

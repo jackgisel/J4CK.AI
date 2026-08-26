@@ -1,4 +1,4 @@
-const FILE_MAX = 200_000
+export const FILE_MAX = 200_000
 const LIST_MAX = 80
 export const UPLOAD_MAX = 10 * 1024 * 1024
 
@@ -209,7 +209,11 @@ export async function putBytes(
   return { path: toPath(path), bytes: bytes.byteLength }
 }
 
-export async function deleteFile(bucket: R2Bucket, home: GuyHome, path: string) {
+export async function deleteFile(
+  bucket: R2Bucket,
+  home: GuyHome,
+  path: string
+) {
   const relative = toPath(path)
   if (!relative) {
     return { error: "Path is required" }
@@ -373,7 +377,7 @@ export function toKey(home: GuyHome, path: string, directory: boolean) {
   return directory ? `${root}${relative}/` : `${root}${relative}`
 }
 
-function isTextFile(path: string, contentType: string) {
+export function isTextFile(path: string, contentType: string) {
   if (contentType.startsWith("text/")) {
     return true
   }
@@ -384,10 +388,12 @@ function isTextFile(path: string, contentType: string) {
   ) {
     return true
   }
-  return /\.(md|txt|csv|json|xml|svg|ts|js|css|html|yml|yaml|toml)$/i.test(path)
+  return /\.(md|txt|csv|tsv|json|xml|svg|ts|tsx|js|jsx|mjs|cjs|css|html|yml|yaml|toml|py|sh|rb|go|rs|sql)$/i.test(
+    path
+  )
 }
 
-function guessContentType(path: string) {
+export function guessContentType(path: string) {
   if (path.endsWith(".md")) {
     return "text/markdown; charset=utf-8"
   }

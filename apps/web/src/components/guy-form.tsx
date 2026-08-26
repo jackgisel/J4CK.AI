@@ -23,12 +23,14 @@ export function GuyForm({
   submitting,
   error,
   submitLabel,
+  showRepo,
   onSubmit,
 }: {
   initial?: Partial<GuyInput>
   submitting: boolean
   error: string | null
   submitLabel: string
+  showRepo?: boolean
   onSubmit: (value: GuyInput) => void
 }) {
   const [name, setName] = useState(initial?.name ?? "")
@@ -43,6 +45,8 @@ export function GuyForm({
     asAvatarHat(initial?.avatarHat)
   )
   const [backstory, setBackstory] = useState(initial?.backstory ?? "")
+  const [repoUrl, setRepoUrl] = useState(initial?.repoUrl ?? "")
+  const [repoToken, setRepoToken] = useState(initial?.repoToken ?? "")
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -53,6 +57,12 @@ export function GuyForm({
       avatarEyes,
       avatarFacialHair,
       avatarHat,
+      ...(showRepo && repoUrl.trim()
+        ? {
+            repoUrl: repoUrl.trim(),
+            repoToken: repoToken.trim() || undefined,
+          }
+        : {}),
     })
   }
 
@@ -142,6 +152,44 @@ export function GuyForm({
           placeholder="Who they are. They write as this."
         />
       </div>
+      {showRepo ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="guy-repo">Skills repo</Label>
+            <Input
+              id="guy-repo"
+              name="repoUrl"
+              type="text"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="https://github.com/you/books"
+              value={repoUrl}
+              onChange={(event) => setRepoUrl(event.currentTarget.value)}
+            />
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Optional. A GitHub repo with Cursor skills (
+              <span className="font-mono text-xs">.cursor/skills</span> or{" "}
+              <span className="font-mono text-xs">skills/*/SKILL.md</span>) and
+              files. They train on that.
+            </p>
+          </div>
+          {repoUrl.trim() ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="guy-repo-token">GitHub token</Label>
+              <Input
+                id="guy-repo-token"
+                name="repoToken"
+                type="password"
+                autoComplete="off"
+                placeholder="Needed for private repos"
+                value={repoToken}
+                onChange={(event) => setRepoToken(event.currentTarget.value)}
+              />
+            </div>
+          ) : null}
+        </>
+      ) : null}
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
