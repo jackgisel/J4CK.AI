@@ -761,6 +761,12 @@ async function trainFromRepo(
     await syncIdentity(env.BUCKET, home)
     return { imported, guy: row }
   }
+  const wroteIdentity = imported.imported.some(
+    (row) => row.path === "identity.md"
+  )
+  if (!wroteIdentity) {
+    return { imported, guy: row }
+  }
   const identity = await readFile(env.BUCKET, home, "identity.md")
   if ("error" in identity || identity.binary) {
     return { imported, guy: row }
