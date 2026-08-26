@@ -33,7 +33,8 @@ export function ContactsPage() {
     <div className="flex flex-1 flex-col gap-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
-          People you invent. Name, a brick head, a backstory.
+          People you invent. Name, a brick head, a backstory. Train one from a
+          skills repo.
         </p>
         <Button render={<Link to="/contacts/new" />}>New guy</Button>
       </div>

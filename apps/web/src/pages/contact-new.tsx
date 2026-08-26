@@ -24,8 +24,15 @@ function NewContactForm() {
     setSubmitting(true)
     setError(null)
     try {
-      const guy = await createGuy(value)
-      navigate(`/contacts/${guy.id}`, { replace: true })
+      const created = await createGuy(value)
+      if (created.imported && "error" in created.imported) {
+        navigate(`/contacts/${created.guy.id}`, {
+          replace: true,
+          state: { importError: created.imported.error },
+        })
+        return
+      }
+      navigate(`/contacts/${created.guy.id}`, { replace: true })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save")
       setSubmitting(false)
@@ -38,7 +45,8 @@ function NewContactForm() {
         <CardHeader>
           <CardTitle>New guy</CardTitle>
           <CardDescription>
-            A name, a brick head, and the story they live by.
+            A name, a brick head, and the story they live by. Optional: a GitHub
+            repo of skills.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -46,6 +54,7 @@ function NewContactForm() {
             submitting={submitting}
             error={error}
             submitLabel="Create"
+            showRepo
             onSubmit={onSubmit}
           />
         </CardContent>

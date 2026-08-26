@@ -41,6 +41,32 @@ export type GuyInput = {
   avatarEyes: AvatarEyes
   avatarFacialHair: AvatarFacialHair
   avatarHat: AvatarHat
+  repoUrl?: string
+  repoToken?: string
+}
+
+export type GuyImport = {
+  url: string
+  owner: string
+  repo: string
+  ref: string
+  sha: string
+  importedAt: string
+  skills: string[]
+  imported: Array<{ path: string; bytes: number }>
+  skipped: Array<{ path: string; reason: string }>
+}
+
+export type GuyOrigin = {
+  url: string
+  owner: string
+  repo: string
+  ref: string
+  sha: string
+  importedAt: string
+  skills: string[]
+  files: number
+  skipped: number
 }
 
 export function formatMessageTime(iso: string) {
@@ -83,11 +109,14 @@ export async function getGuy(id: string) {
 }
 
 export async function createGuy(input: GuyInput) {
-  const data = await api<{ guy: Guy }>("/api/guys", {
+  const data = await api<{
+    guy: Guy
+    imported: GuyImport | { error: string } | null
+  }>("/api/guys", {
     method: "POST",
     body: JSON.stringify(input),
   })
-  return data.guy
+  return data
 }
 
 export async function updateGuy(id: string, input: Partial<GuyInput>) {
@@ -201,7 +230,11 @@ export async function deleteHomeFile(id: string, path: string) {
   )
 }
 
-export async function createHomeSkill(id: string, name: string, content?: string) {
+export async function createHomeSkill(
+  id: string,
+  name: string,
+  content?: string
+) {
   return api<{ path: string; bytes: number; name: string }>(
     `/api/guys/${id}/home/skills`,
     {
@@ -209,6 +242,37 @@ export async function createHomeSkill(id: string, name: string, content?: string
       body: JSON.stringify({ name, content }),
     }
   )
+}
+
+export async function importGuyRepo(
+  id: string,
+  input: { repoUrl: string; repoToken?: string; repoRef?: string }
+) {
+  return api<{ guy: Guy; imported: GuyImport }>(`/api/guys/${id}/home/import`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+}
+
+export async function readGuyOrigin(id: string) {
+  try {
+    const file = await readHomeFile(id, "origin.json")
+    if (file.binary) {
+      return null
+    }
+    const parsed: unknown = JSON.parse(file.content)
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      !("url" in parsed) ||
+      typeof parsed.url !== "string"
+    ) {
+      return null
+    }
+    return parsed as GuyOrigin
+  } catch {
+    return null
+  }
 }
 
 export async function downloadHomeFile(id: string, path: string) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link, useNavigate, useParams } from "react-router"
+import { Link, useLocation, useNavigate, useParams } from "react-router"
 
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -26,12 +26,21 @@ export function ContactPage() {
 function ContactEditor() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [guy, setGuy] = useState<Guy | null>(null)
   const [missing, setMissing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [importError, setImportError] = useState<string | null>(
+    location.state &&
+      typeof location.state === "object" &&
+      "importError" in location.state &&
+      typeof location.state.importError === "string"
+      ? location.state.importError
+      : null
+  )
 
   useEffect(() => {
     if (!id) {
@@ -131,7 +140,7 @@ function ContactEditor() {
             {guy.name}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            Edit who they are, or write them.
+            Edit who they are, train them from a skills repo, or write them.
           </p>
         </div>
         <Button variant="outline" render={<Link to={`/messages/${guy.id}`} />}>
@@ -162,7 +171,12 @@ function ContactEditor() {
           </Button>
         </CardContent>
       </Card>
-      <GuyHome guyId={guy.id} />
+      <GuyHome
+        guyId={guy.id}
+        importError={importError}
+        onGuy={setGuy}
+        onImportError={setImportError}
+      />
     </div>
   )
 }

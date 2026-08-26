@@ -23,6 +23,13 @@ import {
   writeFile,
 } from "./home"
 import { runGuyTurn } from "./agent"
+import {
+  backstoryFromIdentity,
+  importGitHubRepo,
+  parseRepoToken,
+  type ImportFail,
+  type ImportOk,
+} from "./import-repo"
 import { serializeMessage } from "./turn"
 
 type AppEnv = {
@@ -226,8 +233,12 @@ guys.post("/", async (c) => {
   }
 
   await seedHome(c.env.BUCKET, asGuyHome(created))
+  const trained = await trainFromRepo(c.env, created, body)
 
-  return c.json({ guy: serializeGuy(created, null) }, 201)
+  return c.json(
+    { guy: serializeGuy(trained.guy, null), imported: trained.imported },
+    201
+  )
 })
 
 guys.get("/:id", async (c) => {
@@ -559,6 +570,29 @@ guys.delete("/:id/home/file", async (c) => {
   }
 })
 
+guys.post("/:id/home/import", async (c) => {
+  const row = await findOwnedGuy(c)
+  if (!row) {
+    return c.json({ error: "Not found" }, 404)
+  }
+  await ensureHome(c.env.BUCKET, asGuyHome(row))
+  const body = await readObject(c)
+  if (!body) {
+    return c.json({ error: "Expected JSON" }, 400)
+  }
+  const trained = await trainFromRepo(c.env, row, body)
+  if (!trained.imported) {
+    return c.json({ error: "Repo URL is required" }, 400)
+  }
+  if ("error" in trained.imported) {
+    return c.json({ error: trained.imported.error }, 400)
+  }
+  return c.json({
+    guy: serializeGuy(trained.guy, null),
+    imported: trained.imported,
+  })
+})
+
 guys.post("/:id/home/skills", async (c) => {
   const row = await findOwnedGuy(c)
   if (!row) {
@@ -695,6 +729,59 @@ function parseBody(value: unknown) {
     return { error: `Message must be ${BODY_MAX} characters or fewer` }
   }
   return body
+}
+
+async function trainFromRepo(
+  env: Env,
+  row: typeof guy.$inferSelect,
+  body: Record<string, unknown>
+): Promise<{
+  imported: ImportOk | ImportFail | null
+  guy: typeof guy.$inferSelect
+}> {
+  const url = typeof body.repoUrl === "string" ? body.repoUrl.trim() : ""
+  if (!url) {
+    return { imported: null, guy: row }
+  }
+  const token = parseRepoToken(body.repoToken)
+  if (typeof token !== "string") {
+    return { imported: token, guy: row }
+  }
+  const ref = typeof body.repoRef === "string" ? body.repoRef.trim() : ""
+  const home = asGuyHome(row)
+  const imported = await importGitHubRepo(env.BUCKET, home, {
+    url,
+    ref: ref || undefined,
+    token,
+  })
+  if ("error" in imported) {
+    return { imported, guy: row }
+  }
+  if (row.backstory.trim()) {
+    await syncIdentity(env.BUCKET, home)
+    return { imported, guy: row }
+  }
+  const wroteIdentity = imported.imported.some(
+    (row) => row.path === "identity.md"
+  )
+  if (!wroteIdentity) {
+    return { imported, guy: row }
+  }
+  const identity = await readFile(env.BUCKET, home, "identity.md")
+  if ("error" in identity || identity.binary) {
+    return { imported, guy: row }
+  }
+  const backstory = backstoryFromIdentity(identity.content)
+  if (!backstory || backstory.length > BACKSTORY_MAX) {
+    return { imported, guy: row }
+  }
+  const db = createDb(env.DB)
+  const [updated] = await db
+    .update(guy)
+    .set({ backstory, updatedAt: new Date() })
+    .where(eq(guy.id, row.id))
+    .returning()
+  return { imported, guy: updated ?? row }
 }
 
 function serializeGuy(

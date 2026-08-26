@@ -15,23 +15,193 @@ import {
   createHomeSkill,
   deleteHomeFile,
   downloadHomeFile,
+  importGuyRepo,
   listHome,
+  readGuyOrigin,
   readHomeFile,
   uploadHomeFile,
   writeHomeFile,
+  type Guy,
+  type GuyOrigin,
   type HomeFile,
   type HomeListing,
 } from "@/lib/guys"
 
 const FILES_ROOT = "files"
 
-export function GuyHome({ guyId }: { guyId: string }) {
+export function GuyHome({
+  guyId,
+  importError,
+  onGuy,
+  onImportError,
+}: {
+  guyId: string
+  importError?: string | null
+  onGuy?: (guy: Guy) => void
+  onImportError?: (error: string | null) => void
+}) {
+  const [revision, setRevision] = useState(0)
+
   return (
     <div className="flex flex-col gap-8">
-      <Cabinet guyId={guyId} />
-      <SkillsEditor guyId={guyId} />
-      <HooksEditor guyId={guyId} />
+      <RepoTrainer
+        guyId={guyId}
+        importError={importError ?? null}
+        onGuy={onGuy}
+        onImportError={onImportError}
+        onImported={() => setRevision((value) => value + 1)}
+      />
+      <Cabinet key={`cabinet-${revision}`} guyId={guyId} />
+      <SkillsEditor key={`skills-${revision}`} guyId={guyId} />
+      <HooksEditor key={`hooks-${revision}`} guyId={guyId} />
     </div>
+  )
+}
+
+function RepoTrainer({
+  guyId,
+  importError,
+  onGuy,
+  onImportError,
+  onImported,
+}: {
+  guyId: string
+  importError: string | null
+  onGuy?: (guy: Guy) => void
+  onImportError?: (error: string | null) => void
+  onImported?: () => void
+}) {
+  const [origin, setOrigin] = useState<GuyOrigin | null>(null)
+  const [repoUrl, setRepoUrl] = useState("")
+  const [repoToken, setRepoToken] = useState("")
+  const [error, setError] = useState<string | null | undefined>(undefined)
+  const [busy, setBusy] = useState(false)
+  const shownError = error === undefined ? importError : error
+
+  useEffect(() => {
+    let cancelled = false
+    readGuyOrigin(guyId)
+      .then((next) => {
+        if (cancelled || !next) {
+          return
+        }
+        setOrigin(next)
+        setRepoUrl((current) => current || next.url)
+      })
+      .catch(() => {
+        // origin is optional
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [guyId])
+
+  async function train() {
+    setBusy(true)
+    setError(null)
+    onImportError?.(null)
+    try {
+      const result = await importGuyRepo(guyId, {
+        repoUrl,
+        repoToken: repoToken.trim() || undefined,
+      })
+      setOrigin({
+        url: result.imported.url,
+        owner: result.imported.owner,
+        repo: result.imported.repo,
+        ref: result.imported.ref,
+        sha: result.imported.sha,
+        importedAt: result.imported.importedAt,
+        skills: result.imported.skills,
+        files: result.imported.imported.filter((row) =>
+          row.path.startsWith("files/")
+        ).length,
+        skipped: result.imported.skipped.length,
+      })
+      setRepoToken("")
+      onGuy?.(result.guy)
+      onImported?.()
+      setBusy(false)
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "Could not import"
+      setError(message)
+      onImportError?.(message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Train from a repo</CardTitle>
+        <CardDescription>
+          Point at a GitHub repo of Cursor skills and files. Same layout you
+          already use locally:{" "}
+          <span className="font-mono text-xs">.cursor/skills</span>,{" "}
+          <span className="font-mono text-xs">skills/*/SKILL.md</span>, and the
+          working files. They copy into this guy&apos;s home.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        {origin ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Trained from{" "}
+            <a
+              href={origin.url}
+              className="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {origin.owner}/{origin.repo}
+            </a>{" "}
+            @{origin.ref}. {origin.skills.length} skill
+            {origin.skills.length === 1 ? "" : "s"}, {origin.files} file
+            {origin.files === 1 ? "" : "s"}
+            {origin.skipped ? `, ${origin.skipped} skipped` : ""}. Import again
+            to refresh.
+          </p>
+        ) : null}
+        {shownError ? (
+          <p className="text-sm text-destructive" role="alert">
+            {shownError}
+          </p>
+        ) : null}
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="repo-url">GitHub URL</Label>
+          <Input
+            id="repo-url"
+            type="text"
+            inputMode="url"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="https://github.com/you/books"
+            value={repoUrl}
+            onChange={(event) => setRepoUrl(event.currentTarget.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="repo-token">Token for private repos</Label>
+          <Input
+            id="repo-token"
+            type="password"
+            autoComplete="off"
+            placeholder="Not stored"
+            value={repoToken}
+            onChange={(event) => setRepoToken(event.currentTarget.value)}
+          />
+        </div>
+        <div>
+          <Button
+            type="button"
+            disabled={busy || !repoUrl.trim()}
+            onClick={() => void train()}
+          >
+            {busy ? "Training" : origin ? "Import again" : "Train"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -62,7 +232,9 @@ function Cabinet({ guyId }: { guyId: string }) {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : "Could not load files")
+          setError(
+            caught instanceof Error ? caught.message : "Could not load files"
+          )
         }
       })
     return () => {
@@ -77,7 +249,9 @@ function Cabinet({ guyId }: { guyId: string }) {
     try {
       await refresh(path)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not open folder")
+      setError(
+        caught instanceof Error ? caught.message : "Could not open folder"
+      )
     }
   }
 
@@ -254,7 +428,9 @@ function Cabinet({ guyId }: { guyId: string }) {
           {listing &&
           listing.dirs.length === 0 &&
           listing.files.length === 0 ? (
-            <li className="py-3 text-sm text-muted-foreground">Empty folder.</li>
+            <li className="py-3 text-sm text-muted-foreground">
+              Empty folder.
+            </li>
           ) : null}
         </ul>
         {file && selected ? (
@@ -343,7 +519,9 @@ function SkillsEditor({ guyId }: { guyId: string }) {
       setDraft(file.binary ? "" : file.content)
       setBusy(false)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not read skill")
+      setError(
+        caught instanceof Error ? caught.message : "Could not read skill"
+      )
       setBusy(false)
     }
   }
@@ -409,7 +587,8 @@ function SkillsEditor({ guyId }: { guyId: string }) {
       <CardHeader>
         <CardTitle>Skills</CardTitle>
         <CardDescription>
-          Playbooks at skills/*/SKILL.md. Bookkeeping is seeded. Edit in place.
+          Playbooks at skills/*/SKILL.md. Train from a GitHub repo or edit in
+          place.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
@@ -426,8 +605,10 @@ function SkillsEditor({ guyId }: { guyId: string }) {
             >
               <button
                 type="button"
-                className={`flex-1 py-3 text-left text-sm uppercase tracking-widest ${
-                  selected === skill ? "text-foreground" : "text-muted-foreground"
+                className={`flex-1 py-3 text-left text-sm tracking-widest uppercase ${
+                  selected === skill
+                    ? "text-foreground"
+                    : "text-muted-foreground"
                 }`}
                 onClick={() => openSkill(skill)}
               >
@@ -445,7 +626,9 @@ function SkillsEditor({ guyId }: { guyId: string }) {
             </li>
           ))}
           {skills.length === 0 ? (
-            <li className="py-3 text-sm text-muted-foreground">No skills yet.</li>
+            <li className="py-3 text-sm text-muted-foreground">
+              No skills yet.
+            </li>
           ) : null}
         </ul>
         {selected ? (
@@ -509,7 +692,9 @@ function HooksEditor({ guyId }: { guyId: string }) {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : "Could not load hooks")
+          setError(
+            caught instanceof Error ? caught.message : "Could not load hooks"
+          )
         }
       })
     return () => {
