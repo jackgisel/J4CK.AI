@@ -143,7 +143,7 @@ export async function catchUp(id: string) {
 export type HomeListing = {
   path: string
   dirs: string[]
-  files: Array<{ path: string; size: number }>
+  files: Array<{ path: string; size: number; etag?: string; uploaded?: string }>
 }
 
 export type HomeTextFile = {
@@ -201,7 +201,11 @@ export async function deleteHomeFile(id: string, path: string) {
   )
 }
 
-export async function createHomeSkill(id: string, name: string, content?: string) {
+export async function createHomeSkill(
+  id: string,
+  name: string,
+  content?: string
+) {
   return api<{ path: string; bytes: number; name: string }>(
     `/api/guys/${id}/home/skills`,
     {

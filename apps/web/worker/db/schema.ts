@@ -104,10 +104,41 @@ export const message = sqliteTable(
   ]
 )
 
+export const cliDevice = sqliteTable(
+  "cli_device",
+  {
+    id: text("id").primaryKey(),
+    hostname: text("hostname").notNull().default(""),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    token: text("token"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("cli_device_expiresAt_idx").on(table.expiresAt)]
+)
+
+export const cliToken = sqliteTable(
+  "cli_token",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    prefix: text("prefix").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [index("cli_token_userId_idx").on(table.userId)]
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   guys: many(guy),
+  cliDevices: many(cliDevice),
+  cliTokens: many(cliToken),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -125,4 +156,12 @@ export const guyRelations = relations(guy, ({ one, many }) => ({
 
 export const messageRelations = relations(message, ({ one }) => ({
   guy: one(guy, { fields: [message.guyId], references: [guy.id] }),
+}))
+
+export const cliDeviceRelations = relations(cliDevice, ({ one }) => ({
+  user: one(user, { fields: [cliDevice.userId], references: [user.id] }),
+}))
+
+export const cliTokenRelations = relations(cliToken, ({ one }) => ({
+  user: one(user, { fields: [cliToken.userId], references: [user.id] }),
 }))

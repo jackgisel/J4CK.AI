@@ -10,6 +10,21 @@
         "typescript": "~6",
       },
     },
+    "apps/cli": {
+      "name": "j4ck-cli",
+      "version": "0.0.1",
+      "bin": {
+        "j4ck": "./src/index.ts",
+      },
+      "devDependencies": {
+        "@eslint/js": "^10",
+        "@types/node": "^24",
+        "eslint": "^10",
+        "globals": "^17",
+        "typescript": "~6",
+        "typescript-eslint": "^8",
+      },
+    },
     "apps/web": {
       "name": "web",
       "version": "0.0.1",
@@ -936,6 +951,8 @@
     "is-wsl": ["is-wsl@2.2.0", "", { "dependencies": { "is-docker": "^2.0.0" } }, "sha512-fKzAra0rGJUUBwGBgNkHZuToZcn+TtXHpeCgmkMJMMYx1sQDYaCSyjJBSCa2nH1DGm7s3n1oBnohoVTBaN7Lww=="],
 
     "isexe": ["isexe@2.0.0", "", {}, "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw=="],
+
+    "j4ck-cli": ["j4ck-cli@workspace:apps/cli"],
 
     "jiti": ["jiti@2.7.0", "", { "bin": { "jiti": "lib/jiti-cli.mjs" } }, "sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ=="],
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react"
+import { Link } from "react-router"
 
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -62,7 +63,9 @@ function Cabinet({ guyId }: { guyId: string }) {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : "Could not load files")
+          setError(
+            caught instanceof Error ? caught.message : "Could not load files"
+          )
         }
       })
     return () => {
@@ -77,7 +80,9 @@ function Cabinet({ guyId }: { guyId: string }) {
     try {
       await refresh(path)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not open folder")
+      setError(
+        caught instanceof Error ? caught.message : "Could not open folder"
+      )
     }
   }
 
@@ -158,8 +163,14 @@ function Cabinet({ guyId }: { guyId: string }) {
       <CardHeader>
         <CardTitle>Cabinet</CardTitle>
         <CardDescription>
-          Books, receipts, notes. Upload from this machine. Prefer csv or
-          markdown this round.
+          Books, receipts, notes. Upload from this machine, or keep a folder in
+          sync with the Mac CLI. Prefer csv or markdown this round.{" "}
+          <Link
+            to="/cli"
+            className="text-foreground underline-offset-4 hover:underline"
+          >
+            Set up the CLI
+          </Link>
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
@@ -254,7 +265,9 @@ function Cabinet({ guyId }: { guyId: string }) {
           {listing &&
           listing.dirs.length === 0 &&
           listing.files.length === 0 ? (
-            <li className="py-3 text-sm text-muted-foreground">Empty folder.</li>
+            <li className="py-3 text-sm text-muted-foreground">
+              Empty folder.
+            </li>
           ) : null}
         </ul>
         {file && selected ? (
@@ -343,7 +356,9 @@ function SkillsEditor({ guyId }: { guyId: string }) {
       setDraft(file.binary ? "" : file.content)
       setBusy(false)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not read skill")
+      setError(
+        caught instanceof Error ? caught.message : "Could not read skill"
+      )
       setBusy(false)
     }
   }
@@ -426,8 +441,10 @@ function SkillsEditor({ guyId }: { guyId: string }) {
             >
               <button
                 type="button"
-                className={`flex-1 py-3 text-left text-sm uppercase tracking-widest ${
-                  selected === skill ? "text-foreground" : "text-muted-foreground"
+                className={`flex-1 py-3 text-left text-sm tracking-widest uppercase ${
+                  selected === skill
+                    ? "text-foreground"
+                    : "text-muted-foreground"
                 }`}
                 onClick={() => openSkill(skill)}
               >
@@ -445,7 +462,9 @@ function SkillsEditor({ guyId }: { guyId: string }) {
             </li>
           ))}
           {skills.length === 0 ? (
-            <li className="py-3 text-sm text-muted-foreground">No skills yet.</li>
+            <li className="py-3 text-sm text-muted-foreground">
+              No skills yet.
+            </li>
           ) : null}
         </ul>
         {selected ? (
@@ -509,7 +528,9 @@ function HooksEditor({ guyId }: { guyId: string }) {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : "Could not load hooks")
+          setError(
+            caught instanceof Error ? caught.message : "Could not load hooks"
+          )
         }
       })
     return () => {
