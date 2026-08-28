@@ -17,6 +17,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     throw new Error(errorMessage(data, response.status))
   }
+  if (data === null) {
+    throw new Error("Request failed")
+  }
   return data as T
 }
 
