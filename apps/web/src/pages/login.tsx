@@ -12,6 +12,7 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { authClient } from "@/lib/auth-client"
+import { safeCallbackPath } from "@/lib/login-redirect"
 
 const VERIFY_ERRORS: Record<string, string> = {
   INVALID_TOKEN: "That link is invalid or already used. Request a new one.",
@@ -30,7 +31,12 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   if (!isPending && session) {
-    return <Navigate to="/dashboard" replace />
+    return (
+      <Navigate
+        to={safeCallbackPath(searchParams.get("callbackURL"))}
+        replace
+      />
+    )
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -41,7 +47,7 @@ export function LoginPage() {
     const { error: signInError } = await authClient.signIn.magicLink({
       email,
       name: email.split("@")[0] || email,
-      callbackURL: "/dashboard",
+      callbackURL: safeCallbackPath(searchParams.get("callbackURL")),
       errorCallbackURL: "/login",
     })
 
@@ -68,9 +74,9 @@ export function LoginPage() {
         <CardContent>
           {sentTo ? (
             <p className="text-sm leading-relaxed">
-              Check {sentTo} for a link. It expires in 10 minutes. In local
-              dev, Cloudflare writes the message to Worker logs instead of
-              sending it.
+              Check {sentTo} for a link. It expires in 10 minutes. In local dev,
+              Cloudflare writes the message to Worker logs instead of sending
+              it.
             </p>
           ) : (
             <form className="flex flex-col gap-5" onSubmit={onSubmit}>

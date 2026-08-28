@@ -9,10 +9,24 @@ export type GuyHome = {
   backstory: string
 }
 
+export type HomeFileMeta = {
+  path: string
+  size: number
+  etag: string
+  uploaded: string
+}
+
 export type HomeListing = {
   path: string
   dirs: string[]
-  files: Array<{ path: string; size: number }>
+  files: HomeFileMeta[]
+}
+
+export type HomeWrite = {
+  path: string
+  bytes: number
+  etag: string
+  uploaded: string
 }
 
 export type HomeText = {
@@ -109,10 +123,7 @@ export async function listFiles(
   return {
     path: toPath(path),
     dirs: listed.delimitedPrefixes.map((dir) => dir.slice(root.length)),
-    files: listed.objects.map((object) => ({
-      path: object.key.slice(root.length),
-      size: object.size,
-    })),
+    files: listed.objects.map((object) => fileMeta(root, object)),
   }
 }
 
@@ -123,15 +134,12 @@ export async function listFilesDeep(
 ) {
   const prefix = toKey(home, path, true)
   const root = homeRoot(home)
-  const files: Array<{ path: string; size: number }> = []
+  const files: HomeFileMeta[] = []
   let cursor: string | undefined
   for (let i = 0; i < 20; i += 1) {
     const listed = await bucket.list({ prefix, cursor, limit: 100 })
     for (const object of listed.objects) {
-      files.push({
-        path: object.key.slice(root.length),
-        size: object.size,
-      })
+      files.push(fileMeta(root, object))
     }
     if (!listed.truncated) {
       break
@@ -184,10 +192,10 @@ export async function writeFile(
     return { error: `File too large. Max ${FILE_MAX} characters.` }
   }
   const key = toKey(home, path, false)
-  await bucket.put(key, content, {
+  const object = await bucket.put(key, content, {
     httpMetadata: { contentType: guessContentType(toPath(path)) },
   })
-  return { path: toPath(path), bytes: content.length }
+  return written(toPath(path), object, content.length)
 }
 
 export async function putBytes(
@@ -201,15 +209,19 @@ export async function putBytes(
     return { error: `File too large. Max ${UPLOAD_MAX} bytes.` }
   }
   const key = toKey(home, path, false)
-  await bucket.put(key, bytes, {
+  const object = await bucket.put(key, bytes, {
     httpMetadata: {
       contentType: contentType || guessContentType(toPath(path)),
     },
   })
-  return { path: toPath(path), bytes: bytes.byteLength }
+  return written(toPath(path), object, bytes.byteLength)
 }
 
-export async function deleteFile(bucket: R2Bucket, home: GuyHome, path: string) {
+export async function deleteFile(
+  bucket: R2Bucket,
+  home: GuyHome,
+  path: string
+) {
   const relative = toPath(path)
   if (!relative) {
     return { error: "Path is required" }
@@ -356,6 +368,24 @@ const ON_IDLE_HOOK = [
   "If the books are already current, send nothing.",
   "",
 ].join("\n")
+
+function fileMeta(root: string, object: R2Object): HomeFileMeta {
+  return {
+    path: object.key.slice(root.length),
+    size: object.size,
+    etag: object.etag,
+    uploaded: object.uploaded.toISOString(),
+  }
+}
+
+function written(path: string, object: R2Object, bytes: number): HomeWrite {
+  return {
+    path,
+    bytes,
+    etag: object.etag,
+    uploaded: object.uploaded.toISOString(),
+  }
+}
 
 export function toPath(path: string) {
   return path.replace(/^\/+/, "").replace(/\/+$/, "")

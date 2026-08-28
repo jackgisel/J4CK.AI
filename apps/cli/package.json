@@ -1,0 +1,26 @@
+{
+  "name": "j4ck-cli",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "j4ck": "./src/index.ts"
+  },
+  "scripts": {
+    "j4ck": "bun src/index.ts",
+    "dev": "bun src/index.ts",
+    "compile": "bun build --compile src/index.ts --outfile dist/j4ck",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test src"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10",
+    "@types/node": "^24",
+    "eslint": "^10",
+    "globals": "^17",
+    "typescript": "~6",
+    "typescript-eslint": "^8"
+  }
+}

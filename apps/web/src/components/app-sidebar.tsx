@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react"
 import { Link, useLocation } from "react-router"
 import {
+  LaptopIcon,
   LayoutDashboardIcon,
   MessageSquareIcon,
   UsersIcon,
@@ -35,6 +36,11 @@ const navMain = [
     title: "Messages",
     url: "/messages",
     icon: MessageSquareIcon,
+  },
+  {
+    title: "Mac",
+    url: "/cli",
+    icon: LaptopIcon,
   },
 ]
 
