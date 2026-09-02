@@ -22,6 +22,13 @@
       "when": 1787364940102,
       "tag": "0002_sloppy_wild_child",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788387615472,
+      "tag": "0003_magical_nico_minoru",
+      "breakpoints": true
     }
   ]
 }

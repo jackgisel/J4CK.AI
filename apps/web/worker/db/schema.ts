@@ -104,10 +104,50 @@ export const message = sqliteTable(
   ]
 )
 
+export const pipeline = sqliteTable(
+  "pipeline",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    graph: text("graph").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("pipeline_userId_idx").on(table.userId)]
+)
+
+export const pipelineRun = sqliteTable(
+  "pipeline_run",
+  {
+    id: text("id").primaryKey(),
+    pipelineId: text("pipeline_id")
+      .notNull()
+      .references(() => pipeline.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    status: text("status", {
+      enum: ["running", "complete", "error"],
+    }).notNull(),
+    input: text("input").notNull(),
+    workflowInstanceId: text("workflow_instance_id"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    index("pipeline_run_pipelineId_idx").on(table.pipelineId),
+    index("pipeline_run_userId_idx").on(table.userId),
+  ]
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   guys: many(guy),
+  pipelines: many(pipeline),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -125,4 +165,17 @@ export const guyRelations = relations(guy, ({ one, many }) => ({
 
 export const messageRelations = relations(message, ({ one }) => ({
   guy: one(guy, { fields: [message.guyId], references: [guy.id] }),
+}))
+
+export const pipelineRelations = relations(pipeline, ({ one, many }) => ({
+  user: one(user, { fields: [pipeline.userId], references: [user.id] }),
+  runs: many(pipelineRun),
+}))
+
+export const pipelineRunRelations = relations(pipelineRun, ({ one }) => ({
+  pipeline: one(pipeline, {
+    fields: [pipelineRun.pipelineId],
+    references: [pipeline.id],
+  }),
+  user: one(user, { fields: [pipelineRun.userId], references: [user.id] }),
 }))

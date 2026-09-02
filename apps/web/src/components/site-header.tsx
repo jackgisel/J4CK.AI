@@ -32,6 +32,12 @@ function headerTitle(pathname: string, threadTitle: string | null) {
   if (/^\/messages\/[^/]+$/.test(pathname)) {
     return threadTitle ?? "Messages"
   }
+  if (/^\/workflows\/[^/]+\/runs\/[^/]+$/.test(pathname)) {
+    return "Run"
+  }
+  if (pathname.startsWith("/workflows")) {
+    return "Workflows"
+  }
   if (pathname.startsWith("/contacts")) {
     return "Contacts"
   }

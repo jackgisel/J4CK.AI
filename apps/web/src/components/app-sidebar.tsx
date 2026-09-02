@@ -4,6 +4,7 @@ import {
   LayoutDashboardIcon,
   MessageSquareIcon,
   UsersIcon,
+  WorkflowIcon,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -35,6 +36,11 @@ const navMain = [
     title: "Messages",
     url: "/messages",
     icon: MessageSquareIcon,
+  },
+  {
+    title: "Workflows",
+    url: "/workflows",
+    icon: WorkflowIcon,
   },
 ]
 

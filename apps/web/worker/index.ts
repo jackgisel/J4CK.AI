@@ -1,7 +1,9 @@
 import { Hono } from "hono"
+import { routeAgentRequest } from "agents"
 
 import { createAuth } from "./auth"
 import { guys } from "./guys"
+import { pipelines } from "./pipelines"
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -19,6 +21,7 @@ app.get("/api/health", async (c) => {
 })
 
 app.route("/api/guys", guys)
+app.route("/api/pipelines", pipelines)
 
 app.get("/api/r2", async (c) => {
   const listed = await c.env.BUCKET.list({ limit: 20 })
@@ -34,4 +37,15 @@ app.get("/api/r2", async (c) => {
 })
 
 export { GuyAgent } from "./agent"
-export default app
+export { PipelineRunAgent } from "./pipeline-agent"
+export { PipelineWorkflow } from "./pipeline-workflow"
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const routed = await routeAgentRequest(request, env, { cors: true })
+    if (routed) {
+      return routed
+    }
+    return app.fetch(request, env, ctx)
+  },
+}

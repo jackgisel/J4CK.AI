@@ -13,6 +13,9 @@ import { NotFoundPage } from "@/pages/not-found"
 import { PrivacyPage } from "@/pages/privacy"
 import { ThreadPage } from "@/pages/thread"
 import { TosPage } from "@/pages/tos"
+import { WorkflowEditorPage } from "@/pages/workflow-editor"
+import { WorkflowRunPage } from "@/pages/workflow-run"
+import { WorkflowsPage } from "@/pages/workflows"
 
 export function App() {
   return (
@@ -30,6 +33,9 @@ export function App() {
         <Route path="/contacts/:id" element={<ContactPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/messages/:id" element={<ThreadPage />} />
+        <Route path="/workflows" element={<WorkflowsPage />} />
+        <Route path="/workflows/:id" element={<WorkflowEditorPage />} />
+        <Route path="/workflows/:id/runs/:runId" element={<WorkflowRunPage />} />
       </Route>
       <Route element={<SiteShell />}>
         <Route path="*" element={<NotFoundPage />} />
