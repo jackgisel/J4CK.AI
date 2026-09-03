@@ -24,23 +24,26 @@ import {
 
 export function WorkflowChat({
   guy,
+  boardLabel,
   onSpawned,
   onClear,
 }: {
   guy: Guy | null
+  boardLabel?: string | null
   onSpawned: (guy: Guy, model: string) => void
   onClear: () => void
 }) {
-  return guy ? (
-    <GuyThread key={guy.id} guy={guy} onNew={onClear} />
-  ) : (
-    <SpawnThread onSpawned={onSpawned} />
-  )
+  if (guy) {
+    return <GuyThread key={guy.id} guy={guy} onNew={onClear} />
+  }
+  return <SpawnThread boardLabel={boardLabel} onSpawned={onSpawned} />
 }
 
 function SpawnThread({
+  boardLabel,
   onSpawned,
 }: {
+  boardLabel?: string | null
   onSpawned: (guy: Guy, model: string) => void
 }) {
   const [prompt, setPrompt] = useState("")
@@ -98,8 +101,9 @@ function SpawnThread({
     >
       {!pending && !busy ? (
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Describe a little bot. A name, a job, a mood. They show up on the
-          board with a face. Then talk to them here.
+          {boardLabel
+            ? `${boardLabel} is just a face on this board. Describe them here and they become a guy you can talk to.`
+            : "Describe a little bot. A name, a job, a mood. They show up on the board with a face. Then talk to them here."}
         </p>
       ) : null}
       {pending ? <Bubble role="user" body={pending} /> : null}
@@ -113,7 +117,7 @@ function GuyThread({ guy, onNew }: { guy: Guy; onNew: () => void }) {
   const [body, setBody] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [waiting, setWaiting] = useState(false)
+  const [waiting, setWaiting] = useState(true)
   const scrollerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -294,7 +298,7 @@ function ChatShell({
         {children}
       </div>
       <form
-        className="flex shrink-0 flex-col gap-2 border-t border-border px-4 py-3"
+        className="flex shrink-0 flex-col gap-2 border-t border-border bg-background px-4 py-3"
         onSubmit={onSubmit}
       >
         {error ? (

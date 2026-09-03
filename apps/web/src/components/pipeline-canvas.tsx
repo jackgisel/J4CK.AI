@@ -52,6 +52,11 @@ const defaultEdgeOptions = {
   markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
 }
 
+export type SelectedBoardNode = {
+  id: string
+  data: PipelineNodeData
+}
+
 export type PipelineCanvasHandle = {
   placeGuy: (guy: Guy, model?: string) => string | null
 }
@@ -61,9 +66,8 @@ export const PipelineCanvas = forwardRef<
   {
     graph: PipelineGraph
     guys: Guy[]
-    selectedId: string | null
     onChange: (graph: PipelineGraph) => void
-    onSelect: (id: string | null) => void
+    onSelect: (node: SelectedBoardNode | null) => void
   }
 >(function PipelineCanvas(props, ref) {
   return (
@@ -78,12 +82,11 @@ const CanvasBody = forwardRef<
   {
     graph: PipelineGraph
     guys: Guy[]
-    selectedId: string | null
     onChange: (graph: PipelineGraph) => void
-    onSelect: (id: string | null) => void
+    onSelect: (node: SelectedBoardNode | null) => void
   }
 >(function CanvasBody(
-  { graph, guys, selectedId, onChange, onSelect },
+  { graph, guys, onChange, onSelect },
   ref
 ) {
   const hydrated = useMemo(() => hydrateGraph(graph, guys), [graph, guys])
@@ -91,6 +94,10 @@ const CanvasBody = forwardRef<
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
   const skipSync = useRef(true)
+  const nodesRef = useRef(nodes)
+  nodesRef.current = nodes
+  const edgesRef = useRef(edges)
+  edgesRef.current = edges
   const { screenToFlowPosition } = useReactFlow()
 
   useEffect(() => {
@@ -100,15 +107,6 @@ const CanvasBody = forwardRef<
     }
     onChange(fromFlow(nodes, edges))
   }, [nodes, edges, onChange])
-
-  useEffect(() => {
-    setNodes((current) =>
-      current.map((node) => ({
-        ...node,
-        selected: node.id === selectedId,
-      }))
-    )
-  }, [selectedId, setNodes])
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -142,33 +140,43 @@ const CanvasBody = forwardRef<
 
   const placeGuy = useCallback(
     (guy: Guy, model?: string, position?: { x: number; y: number }) => {
-      const existing = nodes.find((node) => node.data.guyId === guy.id)
+      const current = nodesRef.current
+      const existing = current.find((node) => node.data.guyId === guy.id)
       if (existing) {
-        onSelect(existing.id)
+        setNodes((nodes) =>
+          nodes.map((node) => ({
+            ...node,
+            selected: node.id === existing.id,
+          }))
+        )
+        onSelect({ id: existing.id, data: existing.data })
         return existing.id
       }
-      if (nodes.length >= MAX_NODES) {
+      if (current.length >= MAX_NODES) {
         return null
       }
       const id = `n${shortId()}`
+      const data = guyNodeData(guy, model)
       const node: FlowNode = {
         id,
         type: "step",
         position: position ?? {
-          x: 80 + (nodes.length % 5) * 140,
-          y: 80 + Math.floor(nodes.length / 5) * 140,
+          x: 80 + (current.length % 5) * 140,
+          y: 80 + Math.floor(current.length / 5) * 140,
         },
-        data: guyNodeData(guy, model),
+        data,
         selected: true,
       }
-      setNodes((current) => [
+      const next = [
         ...current.map((item) => ({ ...item, selected: false })),
         node,
-      ])
-      onSelect(id)
+      ]
+      setNodes(next)
+      onChange(fromFlow(next, edgesRef.current))
+      onSelect({ id, data })
       return id
     },
-    [nodes, onSelect, setNodes]
+    [onChange, onSelect, setNodes]
   )
 
   useImperativeHandle(ref, () => ({ placeGuy }), [placeGuy])
@@ -211,9 +219,11 @@ const CanvasBody = forwardRef<
           onConnect={onConnect}
           onDragOver={onDragOver}
           onDrop={onDrop}
-          onPaneClick={() => onSelect(null)}
           onSelectionChange={({ nodes: selected }) => {
-            onSelect(selected[0]?.id ?? null)
+            const node = selected[0]
+            if (node) {
+              onSelect({ id: node.id, data: node.data })
+            }
           }}
           isValidConnection={() => true}
           connectionMode={ConnectionMode.Loose}

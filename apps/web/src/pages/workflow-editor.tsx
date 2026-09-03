@@ -16,6 +16,7 @@ import {
 import {
   PipelineCanvas,
   type PipelineCanvasHandle,
+  type SelectedBoardNode,
 } from "@/components/pipeline-canvas"
 import { WorkflowChat } from "@/components/workflow-chat"
 import { listGuys, type Guy } from "@/lib/guys"
@@ -42,7 +43,8 @@ function WorkflowEditor() {
   const [guys, setGuys] = useState<Guy[]>([])
   const [name, setName] = useState("")
   const [graph, setGraph] = useState<PipelineGraph | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [chatGuy, setChatGuy] = useState<Guy | null>(null)
+  const [boardLabel, setBoardLabel] = useState<string | null>(null)
   const [missing, setMissing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -119,9 +121,24 @@ function WorkflowEditor() {
   const row = pipeline
   const currentGraph = graph
   const fields = runInputs(currentGraph)
-  const selectedNode = currentGraph.nodes.find((node) => node.id === selectedId)
-  const selectedGuy =
-    guys.find((guy) => guy.id === selectedNode?.data.guyId) ?? null
+
+  function focusNode(node: SelectedBoardNode | null) {
+    if (!node) {
+      setChatGuy(null)
+      setBoardLabel(null)
+      return
+    }
+    if (node.data.guyId) {
+      const found = guys.find((guy) => guy.id === node.data.guyId)
+      if (found) {
+        setChatGuy(found)
+      }
+      setBoardLabel(null)
+      return
+    }
+    setChatGuy(null)
+    setBoardLabel(node.data.label)
+  }
 
   async function save() {
     setSaving(true)
@@ -183,10 +200,9 @@ function WorkflowEditor() {
     setGuys((current) =>
       current.some((row) => row.id === guy.id) ? current : [guy, ...current]
     )
-    const placed = canvasRef.current?.placeGuy(guy, model)
-    if (placed) {
-      setSelectedId(placed)
-    }
+    setChatGuy(guy)
+    setBoardLabel(null)
+    canvasRef.current?.placeGuy(guy, model)
   }
 
   return (
@@ -228,11 +244,12 @@ function WorkflowEditor() {
         </p>
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="flex h-[42vh] min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[22rem] lg:border-r lg:border-b-0">
+        <div className="flex min-h-0 w-full shrink-0 flex-col border-b border-border max-lg:h-[min(22rem,50vh)] lg:h-auto lg:w-[22rem] lg:self-stretch lg:border-r lg:border-b-0">
           <WorkflowChat
-            guy={selectedGuy}
+            guy={chatGuy}
+            boardLabel={boardLabel}
             onSpawned={onSpawned}
-            onClear={() => setSelectedId(null)}
+            onClear={() => focusNode(null)}
           />
         </div>
         <PipelineCanvas
@@ -240,9 +257,8 @@ function WorkflowEditor() {
           ref={canvasRef}
           graph={currentGraph}
           guys={guys}
-          selectedId={selectedId}
           onChange={onGraphChange}
-          onSelect={setSelectedId}
+          onSelect={focusNode}
         />
       </div>
       <Sheet open={runOpen} onOpenChange={setRunOpen}>
