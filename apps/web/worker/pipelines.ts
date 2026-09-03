@@ -83,7 +83,7 @@ pipelines.post("/", async (c) => {
     typeof body.name === "string" && body.name.trim()
       ? parseName(body.name)
       : template === "review"
-        ? "Claude to images"
+        ? "June and Fable"
         : "Untitled"
   if (typeof name !== "string") {
     return c.json({ error: name.error }, 400)
@@ -216,6 +216,9 @@ pipelines.post("/:id/runs", async (c) => {
   const graph = parseGraph(row.graph)
   if ("error" in graph) {
     return c.json({ error: graph.error }, 400)
+  }
+  if (graph.nodes.length === 0) {
+    return c.json({ error: "Add a guy first" }, 400)
   }
 
   const body = await readObject(c)

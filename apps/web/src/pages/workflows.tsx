@@ -55,7 +55,7 @@ function WorkflowList() {
     <div className="flex flex-1 flex-col gap-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
-          Add nodes. Pick input, a model, and instructions. Run.
+          Invent a guy in chat. Drop faces on the board. Draw arrows and loops.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -66,7 +66,7 @@ function WorkflowList() {
             {creating === "review" ? "Creating…" : "Use example"}
           </Button>
           <Button disabled={creating !== null} onClick={() => create("blank")}>
-            {creating === "blank" ? "Creating…" : "New workflow"}
+            {creating === "blank" ? "Creating…" : "New board"}
           </Button>
         </div>
       </div>
@@ -78,7 +78,7 @@ function WorkflowList() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="text-sm leading-relaxed text-muted-foreground">
-          None yet. Start a workflow and add nodes, or use the example.
+          None yet. Invent a guy in chat, or use the example.
         </p>
       ) : (
         <ul className="flex flex-col">

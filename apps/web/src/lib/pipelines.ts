@@ -1,3 +1,6 @@
+import type { AvatarEyes, AvatarFacialHair, AvatarHat } from "@/lib/avatar"
+import type { Guy } from "@/lib/guys"
+
 export const CHAT_MODELS = [
   { id: "anthropic/claude-sonnet-4-5", label: "Claude Sonnet" },
 ] as const
@@ -9,8 +12,18 @@ export const IMAGE_MODELS = [
 
 export const MODELS = [...CHAT_MODELS, ...IMAGE_MODELS]
 export const MAX_NODES = 20
+export const MAX_LOOPS = 8
+export const DEFAULT_LOOPS = 3
+
+export const DEFAULT_FACE = {
+  color: "#44403c",
+  avatarEyes: "dots" as const,
+  avatarFacialHair: "none" as const,
+  avatarHat: "none" as const,
+}
 
 export type PipelineNodeType = "step"
+export type PipelineEdgeKind = "flow" | "loop"
 
 export type RunField = {
   key: string
@@ -22,6 +35,12 @@ export type PipelineNodeData = {
   model: string
   systemPrompt: string
   inputFrom?: string | null
+  guyId?: string | null
+  color: string
+  avatarEyes: AvatarEyes
+  avatarFacialHair: AvatarFacialHair
+  avatarHat: AvatarHat
+  maxLoops?: number
 }
 
 export type PipelineNode = {
@@ -35,6 +54,8 @@ export type PipelineEdge = {
   id: string
   source: string
   target: string
+  kind: PipelineEdgeKind
+  max?: number
 }
 
 export type PipelineGraph = {
@@ -91,9 +112,85 @@ export function modelLabel(model: string | undefined) {
 }
 
 export function runInputs(graph: PipelineGraph): RunField[] {
+  const incoming = new Set(
+    graph.edges
+      .filter((edge) => edge.kind !== "loop")
+      .map((edge) => edge.target)
+  )
   return graph.nodes
-    .filter((node) => !node.data.inputFrom)
+    .filter((node) => !incoming.has(node.id))
     .map((node) => ({ key: node.id, label: node.data.label }))
+}
+
+export function hydrateGraph(graph: PipelineGraph, guys: Guy[]): PipelineGraph {
+  const byId = new Map(guys.map((row) => [row.id, row]))
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node) => {
+      const guy = node.data.guyId ? byId.get(node.data.guyId) : undefined
+      if (!guy) {
+        return {
+          ...node,
+          data: {
+            ...DEFAULT_FACE,
+            ...node.data,
+            color: node.data.color || DEFAULT_FACE.color,
+            avatarEyes: node.data.avatarEyes || DEFAULT_FACE.avatarEyes,
+            avatarFacialHair:
+              node.data.avatarFacialHair || DEFAULT_FACE.avatarFacialHair,
+            avatarHat: node.data.avatarHat || DEFAULT_FACE.avatarHat,
+          },
+        }
+      }
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          label: guy.name,
+          color: guy.color,
+          avatarEyes: guy.avatarEyes,
+          avatarFacialHair: guy.avatarFacialHair,
+          avatarHat: guy.avatarHat,
+          systemPrompt: guy.backstory,
+        },
+      }
+    }),
+  }
+}
+
+export function wouldCreateCycle(
+  edges: PipelineEdge[],
+  source: string,
+  target: string
+) {
+  if (source === target) {
+    return true
+  }
+  const outgoing = new Map<string, string[]>()
+  for (const edge of edges) {
+    if (edge.kind === "loop") {
+      continue
+    }
+    const list = outgoing.get(edge.source) ?? []
+    list.push(edge.target)
+    outgoing.set(edge.source, list)
+  }
+  const seen = new Set<string>()
+  const stack = [...(outgoing.get(target) ?? [])]
+  while (stack.length > 0) {
+    const id = stack.pop()
+    if (!id || seen.has(id)) {
+      continue
+    }
+    if (id === source) {
+      return true
+    }
+    seen.add(id)
+    for (const next of outgoing.get(id) ?? []) {
+      stack.push(next)
+    }
+  }
+  return false
 }
 
 export function formatRunTime(iso: string) {

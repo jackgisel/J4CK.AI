@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router"
 import { useAgent } from "agents/react"
 
 import { Button } from "@workspace/ui/components/button"
+import { GuyMark } from "@/components/guy-mark"
 import {
   artifactUrl,
   getPipelineRun,
@@ -120,7 +121,16 @@ function WorkflowRun() {
             return (
               <li key={node.id} className="flex flex-col gap-0.5">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm">{node.data.label}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <GuyMark
+                      color={node.data.color}
+                      avatarEyes={node.data.avatarEyes}
+                      avatarFacialHair={node.data.avatarFacialHair}
+                      avatarHat={node.data.avatarHat}
+                      className="size-7"
+                    />
+                    <span className="truncate text-sm">{node.data.label}</span>
+                  </span>
                   <StatusMark status={current?.status ?? "pending"} />
                 </span>
                 {current?.error ? (
