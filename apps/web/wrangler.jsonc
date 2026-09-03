@@ -14,7 +14,7 @@
   ],
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/agents/*"]
   },
   "r2_buckets": [
     {
@@ -30,13 +30,28 @@
       {
         "name": "GuyAgent",
         "class_name": "GuyAgent"
+      },
+      {
+        "name": "PipelineRunAgent",
+        "class_name": "PipelineRunAgent"
       }
     ]
   },
+  "workflows": [
+    {
+      "name": "j4ck-pipeline",
+      "binding": "PIPELINE_WORKFLOW",
+      "class_name": "PipelineWorkflow"
+    }
+  ],
   "migrations": [
     {
       "tag": "v1",
       "new_sqlite_classes": ["GuyAgent"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["PipelineRunAgent"]
     }
   ],
   "d1_databases": [
@@ -55,6 +70,7 @@
   ],
   "vars": {
     "EMAIL_FROM": "noreply@j4ck.ai",
-    "BETTER_AUTH_SECRET": "WiJtCLy4wS5OlKS52/JLSof9u8kYV4tv+IamJZq0UK8="
+    "BETTER_AUTH_SECRET": "WiJtCLy4wS5OlKS52/JLSof9u8kYV4tv+IamJZq0UK8=",
+    "AI_GATEWAY_ID": ""
   }
 }
