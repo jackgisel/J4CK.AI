@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { routeAgentRequest } from "agents"
 
 import { createAuth } from "./auth"
+import { cli } from "./cli"
 import { guys } from "./guys"
 import { pipelines } from "./pipelines"
 
@@ -20,6 +21,7 @@ app.get("/api/health", async (c) => {
   }
 })
 
+app.route("/api/cli", cli)
 app.route("/api/guys", guys)
 app.route("/api/pipelines", pipelines)
 

@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router"
 
 import { AppShell } from "@/components/app-shell"
 import { SiteShell } from "@/components/site-shell"
+import { CliPage } from "@/pages/cli"
 import { ContactPage } from "@/pages/contact"
 import { NewContactPage } from "@/pages/contact-new"
 import { ContactsPage } from "@/pages/contacts"
@@ -31,6 +32,7 @@ export function App() {
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/contacts/new" element={<NewContactPage />} />
         <Route path="/contacts/:id" element={<ContactPage />} />
+        <Route path="/cli" element={<CliPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/messages/:id" element={<ThreadPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />

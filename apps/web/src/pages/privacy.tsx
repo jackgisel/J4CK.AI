@@ -4,7 +4,7 @@ export function PrivacyPage() {
       <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-5xl">
         Privacy
       </h1>
-      <p className="text-muted-foreground">Last updated August 21, 2026.</p>
+      <p className="text-muted-foreground">Last updated August 28, 2026.</p>
       <p>
         This policy covers j4ck.ai, operated by Jack Gisel. It is a personal
         site, not a product company.
@@ -38,7 +38,9 @@ export function PrivacyPage() {
       <p>
         A session cookie is set after you click a magic link. It is used to keep
         you signed in. Theme preference and the privacy consent flag are stored
-        in your browser with localStorage.
+        in your browser with localStorage. If you link the Mac CLI, I store a
+        hashed token in D1. The secret itself lives in a config file on that
+        Mac.
       </p>
       <h2 className="font-heading text-lg font-semibold tracking-wider uppercase">
         Sharing

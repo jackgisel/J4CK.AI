@@ -38,6 +38,9 @@ function headerTitle(pathname: string, threadTitle: string | null) {
   if (pathname.startsWith("/workflows")) {
     return "Workflows"
   }
+  if (pathname.startsWith("/cli")) {
+    return "Mac"
+  }
   if (pathname.startsWith("/contacts")) {
     return "Contacts"
   }

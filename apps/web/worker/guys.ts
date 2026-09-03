@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, gte, inArray } from "drizzle-orm"
 import { Hono, type Context } from "hono"
 
-import { createAuth } from "./auth"
 import { createDb } from "./db"
 import { guy, message } from "./db/schema"
 import {
@@ -23,6 +22,7 @@ import {
   writeFile,
 } from "./home"
 import { runGuyTurn } from "./agent"
+import { getRequestUser } from "./session"
 import { serializeMessage } from "./turn"
 
 type AppEnv = {
@@ -61,16 +61,13 @@ const AVATAR_HATS = [
 export const guys = new Hono<AppEnv>()
 
 guys.use("*", async (c, next) => {
-  const session = await createAuth(c.env, c.req.raw).api.getSession({
-    headers: c.req.raw.headers,
-  })
-
-  if (!session) {
+  const user = await getRequestUser(c.env, c.req.raw)
+  if (!user) {
     return c.json({ error: "Unauthorized" }, 401)
   }
 
-  c.set("userId", session.user.id)
-  c.set("userName", session.user.name)
+  c.set("userId", user.id)
+  c.set("userName", user.name)
   await next()
 })
 
@@ -459,6 +456,8 @@ guys.get("/:id/home/file", async (c) => {
           "content-type":
             object.httpMetadata?.contentType ?? "application/octet-stream",
           "content-disposition": `attachment; filename="${name}"`,
+          etag: object.httpEtag || object.etag,
+          "last-modified": object.uploaded.toUTCString(),
         },
       })
     }
@@ -513,6 +512,7 @@ guys.post("/:id/home/upload", async (c) => {
     return c.json({ error: "Expected multipart form" }, 400)
   }
   const folder = toPath(String(form.get("folder") ?? "files"))
+  const explicit = toPath(String(form.get("path") ?? ""))
   const file = form.get("file")
   if (!(file instanceof File)) {
     return c.json({ error: "File is required" }, 400)
@@ -521,10 +521,10 @@ guys.post("/:id/home/upload", async (c) => {
     return c.json({ error: "File too large. Max 10 MB." }, 400)
   }
   const name = file.name.replace(/[/\\]/g, "").trim()
-  if (!name) {
+  if (!explicit && !name) {
     return c.json({ error: "File name is required" }, 400)
   }
-  const path = folder ? `${folder}/${name}` : name
+  const path = explicit || (folder ? `${folder}/${name}` : name)
   try {
     const written = await putBytes(
       c.env.BUCKET,
