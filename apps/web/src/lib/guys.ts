@@ -90,6 +90,18 @@ export async function createGuy(input: GuyInput) {
   return data.guy
 }
 
+export async function spawnGuy(prompt: string) {
+  const data = await api<{
+    guy: Guy
+    model: string
+    greeting: Message | null
+  }>("/api/guys/spawn", {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  })
+  return data
+}
+
 export async function updateGuy(id: string, input: Partial<GuyInput>) {
   const data = await api<{ guy: Guy }>(`/api/guys/${id}`, {
     method: "PATCH",

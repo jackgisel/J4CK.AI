@@ -26,12 +26,13 @@ export async function executeNode(
     userId: string
     pipelineId: string
     runId: string
+    visit?: number
     inputs: Record<string, string>
     outputs: Record<string, NodeOutput>
   }
 ): Promise<NodeOutput> {
   const images = await loadParentImages(env, graph, node, ctx.outputs)
-  const prompt = resolvePrompt(node, graph, ctx.inputs, ctx.outputs)
+  const prompt = resolvePrompt(node, graph, ctx.inputs, ctx.outputs, ctx.visit)
   if (!prompt.trim() && images.length === 0) {
     throw new Error(`${node.data.label} has an empty input`)
   }
@@ -52,7 +53,8 @@ function resolvePrompt(
   node: PipelineNode,
   graph: PipelineGraph,
   inputs: Record<string, string>,
-  outputs: Record<string, NodeOutput>
+  outputs: Record<string, NodeOutput>,
+  visit = 1
 ) {
   const parts: string[] = []
   const from = node.data.inputFrom
@@ -60,6 +62,11 @@ function resolvePrompt(
     const output = outputs[from]
     if (output?.text) {
       parts.push(output.text)
+    } else if (visit <= 1) {
+      const text = inputs[node.id]?.trim()
+      if (text) {
+        parts.push(text)
+      }
     }
   } else {
     const text = inputs[node.id]?.trim()
@@ -73,10 +80,24 @@ function resolvePrompt(
       continue
     }
     const output = outputs[parent.id]
-    if (!output?.text || output.artifactKey) {
+    if (!output?.text) {
       continue
     }
-    parts.push(output.text)
+    if (output.artifactKey && parent.id !== node.id) {
+      continue
+    }
+    parts.push(
+      parent.id === node.id && visit > 1
+        ? `Previous pass:\n${output.text}`
+        : output.text
+    )
+  }
+
+  if (visit > 1 && !parts.some((part) => part.startsWith("Previous pass:"))) {
+    const previous = outputs[node.id]?.text
+    if (previous) {
+      parts.push(`Previous pass:\n${previous}`)
+    }
   }
 
   return parts.join("\n\n")

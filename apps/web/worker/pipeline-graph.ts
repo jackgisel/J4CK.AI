@@ -1,7 +1,51 @@
 export const MAX_NODES = 20
+export const MAX_LOOPS = 8
+export const MAX_STEPS = 40
+export const DEFAULT_LOOPS = 3
 export const LABEL_MAX = 80
 export const PROMPT_MAX = 8000
 export const INPUT_VALUE_MAX = 8000
+
+export const AVATAR_EYES = [
+  "dots",
+  "wide",
+  "sleepy",
+  "angry",
+  "squint",
+  "glasses",
+] as const
+export const AVATAR_FACIAL_HAIR = [
+  "none",
+  "stubble",
+  "mustache",
+  "beard",
+  "goatee",
+] as const
+export const AVATAR_HATS = [
+  "none",
+  "cap",
+  "beanie",
+  "hardhat",
+  "tophat",
+  "cowboy",
+] as const
+export const GUY_COLORS = [
+  "#0f766e",
+  "#1c1917",
+  "#9f1239",
+  "#1e3a5f",
+  "#3f6212",
+  "#9a3412",
+  "#44403c",
+  "#0e7490",
+] as const
+
+export const DEFAULT_FACE = {
+  color: "#44403c",
+  avatarEyes: "dots" as const,
+  avatarFacialHair: "none" as const,
+  avatarHat: "none" as const,
+}
 
 export const CHAT_MODELS = [
   {
@@ -34,11 +78,21 @@ export type RunField = {
   label: string
 }
 
+export type AvatarEyes = (typeof AVATAR_EYES)[number]
+export type AvatarFacialHair = (typeof AVATAR_FACIAL_HAIR)[number]
+export type AvatarHat = (typeof AVATAR_HATS)[number]
+
 export type PipelineNodeData = {
   label: string
   model: string
   systemPrompt: string
   inputFrom?: string | null
+  guyId?: string | null
+  color: string
+  avatarEyes: AvatarEyes
+  avatarFacialHair: AvatarFacialHair
+  avatarHat: AvatarHat
+  maxLoops?: number
 }
 
 export type PipelineNode = {
@@ -48,10 +102,14 @@ export type PipelineNode = {
   data: PipelineNodeData
 }
 
+export type PipelineEdgeKind = "flow" | "loop"
+
 export type PipelineEdge = {
   id: string
   source: string
   target: string
+  kind: PipelineEdgeKind
+  max?: number
 }
 
 export type PipelineGraph = {
@@ -65,6 +123,13 @@ export type NodeOutput = {
   contentType?: string
 }
 
+export type PlannedStep = {
+  node: PipelineNode
+  visit: number
+}
+
+export type PlannedWave = PlannedStep[]
+
 const LEGACY_TYPES = new Set(["input", "chat", "image", "step"])
 
 export function isImageModel(model: string | undefined) {
@@ -76,21 +141,16 @@ export function modelLabel(model: string | undefined) {
 }
 
 export function emptyGraph(): PipelineGraph {
-  return {
-    nodes: [
-      {
-        id: "n1",
-        type: "step",
-        position: { x: 80, y: 120 },
-        data: {
-          label: "Claude Sonnet",
-          model: CHAT_MODELS[0].id,
-          systemPrompt: "",
-        },
-      },
-    ],
-    edges: [],
-  }
+  return { nodes: [], edges: [] }
+}
+
+function face(
+  color: string,
+  avatarEyes: AvatarEyes,
+  avatarFacialHair: AvatarFacialHair,
+  avatarHat: AvatarHat
+) {
+  return { color, avatarEyes, avatarFacialHair, avatarHat }
 }
 
 export function starterGraph(): PipelineGraph {
@@ -104,6 +164,7 @@ export function starterGraph(): PipelineGraph {
           label: "Claude",
           model: "anthropic/claude-sonnet-4-5",
           systemPrompt: "You write image prompts. Be concrete. No preamble.",
+          ...face("#0f766e", "glasses", "none", "none"),
         },
       },
       {
@@ -111,10 +172,11 @@ export function starterGraph(): PipelineGraph {
         type: "step",
         position: { x: 280, y: 80 },
         data: {
-          label: "Follow-up",
+          label: "June",
           model: "anthropic/claude-sonnet-4-5",
           systemPrompt:
             "Revise the previous image prompt using this follow-up. Return only the prompt.",
+          ...face("#1e3a5f", "sleepy", "none", "none"),
         },
       },
       {
@@ -122,10 +184,11 @@ export function starterGraph(): PipelineGraph {
         type: "step",
         position: { x: 520, y: 0 },
         data: {
-          label: "Grok Image",
+          label: "Grok",
           model: "xai/grok-imagine-image",
           systemPrompt: "",
           inputFrom: "claude2",
+          ...face("#9a3412", "angry", "stubble", "cap"),
         },
       },
       {
@@ -133,10 +196,11 @@ export function starterGraph(): PipelineGraph {
         type: "step",
         position: { x: 520, y: 200 },
         data: {
-          label: "GPT Image",
+          label: "Iris",
           model: "openai/gpt-image-2",
           systemPrompt: "",
           inputFrom: "claude2",
+          ...face("#3f6212", "wide", "none", "beanie"),
         },
       },
       {
@@ -147,17 +211,26 @@ export function starterGraph(): PipelineGraph {
           label: "Fable",
           model: "anthropic/claude-sonnet-4-5",
           systemPrompt:
-            "You are Fable. Review the two images. Compare composition, taste, and whether they match the prompt. Be direct. Name a winner if there is one.",
+            "You are Fable. Review the two images. Compare composition, taste, and whether they match the prompt. Be direct. Name a winner if there is one. If the prompt should change, say REVISE and give the note. If it is good enough, say DONE.",
           inputFrom: "claude2",
+          maxLoops: 2,
+          ...face("#1c1917", "dots", "mustache", "tophat"),
         },
       },
     ],
     edges: [
-      { id: "e-claude1-claude2", source: "claude1", target: "claude2" },
-      { id: "e-claude2-grok", source: "claude2", target: "grok" },
-      { id: "e-claude2-gpt", source: "claude2", target: "gpt" },
-      { id: "e-grok-fable", source: "grok", target: "fable" },
-      { id: "e-gpt-fable", source: "gpt", target: "fable" },
+      { id: "e-claude1-claude2", source: "claude1", target: "claude2", kind: "flow" },
+      { id: "e-claude2-grok", source: "claude2", target: "grok", kind: "flow" },
+      { id: "e-claude2-gpt", source: "claude2", target: "gpt", kind: "flow" },
+      { id: "e-grok-fable", source: "grok", target: "fable", kind: "flow" },
+      { id: "e-gpt-fable", source: "gpt", target: "fable", kind: "flow" },
+      {
+        id: "e-fable-claude2",
+        source: "fable",
+        target: "claude2",
+        kind: "loop",
+        max: 2,
+      },
     ],
   }
 }
@@ -183,9 +256,6 @@ export function parseGraph(raw: unknown): PipelineGraph | { error: string } {
     return migrated
   }
 
-  if (migrated.nodes.length === 0) {
-    return { error: "Add at least one node" }
-  }
   if (migrated.nodes.length > MAX_NODES) {
     return { error: `At most ${MAX_NODES} nodes` }
   }
@@ -209,10 +279,7 @@ export function parseGraph(raw: unknown): PipelineGraph | { error: string } {
     if (!from) {
       continue
     }
-    if (from === node.id) {
-      return { error: `${node.data.label} cannot use itself as input` }
-    }
-    if (!ids.has(from)) {
+    if (from !== node.id && !ids.has(from)) {
       return { error: `${node.data.label} points at a missing input node` }
     }
   }
@@ -244,21 +311,51 @@ export function parseGraph(raw: unknown): PipelineGraph | { error: string } {
       continue
     }
     const id = `e-${from}-${node.id}`
-    edges.push({ id: edgeIds.has(id) ? `${id}-in` : id, source: from, target: node.id })
+    const added: PipelineEdge = {
+      id: edgeIds.has(id) ? `${id}-in` : id,
+      source: from,
+      target: node.id,
+      kind: from === node.id ? "loop" : "flow",
+    }
+    edges.push(added)
+    edgeIds.add(added.id)
     edgeKeys.add(key)
   }
 
-  const graph = { nodes, edges }
-  const waves = topoWaves(graph)
+  const classified = edges.map((edge, index, list) =>
+    inferEdgeKind(edge, list.slice(0, index))
+  )
+  const graph = { nodes, edges: classified }
+  const flow = flowGraph(graph)
+  const waves = topoWaves(flow)
   if ("error" in waves) {
-    return waves
+    return { error: "Draw a loop for cycles. Plain arrows have to run forward." }
+  }
+  const planned = executionPlan(graph)
+  if ("error" in planned) {
+    return planned
   }
   return graph
 }
 
+export function flowEdgesOf(graph: PipelineGraph) {
+  return graph.edges.filter((edge) => edge.kind !== "loop")
+}
+
+export function loopEdgesOf(graph: PipelineGraph) {
+  return graph.edges.filter((edge) => edge.kind === "loop")
+}
+
+export function flowGraph(graph: PipelineGraph): PipelineGraph {
+  return { nodes: graph.nodes, edges: flowEdgesOf(graph) }
+}
+
 export function runInputs(graph: PipelineGraph): RunField[] {
+  const incoming = new Set(
+    flowEdgesOf(graph).map((edge) => edge.target)
+  )
   return graph.nodes
-    .filter((node) => !node.data.inputFrom)
+    .filter((node) => !incoming.has(node.id))
     .map((node) => ({ key: node.id, label: node.data.label }))
 }
 
@@ -278,6 +375,9 @@ export function topoWaves(graph: PipelineGraph): PipelineNode[][] | { error: str
     outgoing.set(node.id, [])
   }
   for (const edge of graph.edges) {
+    if (edge.kind === "loop") {
+      continue
+    }
     incoming.set(edge.target, (incoming.get(edge.target) ?? 0) + 1)
     outgoing.get(edge.source)?.push(edge.target)
   }
@@ -310,6 +410,224 @@ export function topoWaves(graph: PipelineGraph): PipelineNode[][] | { error: str
     return { error: "Graph has a cycle" }
   }
   return waves
+}
+
+export function inferEdgeKind(
+  edge: PipelineEdge,
+  previous: PipelineEdge[]
+): PipelineEdge {
+  if (edge.source === edge.target) {
+    return { ...edge, kind: "loop" }
+  }
+  if (edge.kind === "loop") {
+    return edge
+  }
+  if (canReach(edge.target, edge.source, previous.filter((item) => item.kind !== "loop"))) {
+    return { ...edge, kind: "loop" }
+  }
+  return { ...edge, kind: "flow" }
+}
+
+export function canReach(
+  from: string,
+  to: string,
+  edges: PipelineEdge[]
+) {
+  return reachableFrom(from, edges).has(to)
+}
+
+export function reachableFrom(start: string, edges: PipelineEdge[]) {
+  const outgoing = new Map<string, string[]>()
+  for (const edge of edges) {
+    const list = outgoing.get(edge.source) ?? []
+    list.push(edge.target)
+    outgoing.set(edge.source, list)
+  }
+  const seen = new Set<string>()
+  const stack = [...(outgoing.get(start) ?? [])]
+  while (stack.length > 0) {
+    const id = stack.pop()
+    if (!id || seen.has(id)) {
+      continue
+    }
+    seen.add(id)
+    for (const next of outgoing.get(id) ?? []) {
+      stack.push(next)
+    }
+  }
+  return seen
+}
+
+export function loopLimit(node: PipelineNode, edge?: PipelineEdge) {
+  const value = edge?.max ?? node.data.maxLoops ?? DEFAULT_LOOPS
+  if (!Number.isFinite(value)) {
+    return DEFAULT_LOOPS
+  }
+  return Math.min(MAX_LOOPS, Math.max(1, Math.floor(value)))
+}
+
+export function executionPlan(
+  graph: PipelineGraph
+): PlannedWave[] | { error: string } {
+  if (graph.nodes.length === 0) {
+    return []
+  }
+  const flow = flowGraph(graph)
+  const waves = topoWaves(flow)
+  if ("error" in waves) {
+    return { error: "Draw a loop for cycles. Plain arrows have to run forward." }
+  }
+
+  const byId = new Map(graph.nodes.map((node) => [node.id, node]))
+  const visits = new Map<string, number>()
+  const planned: PlannedWave[] = []
+  let total = 0
+
+  const bump = (node: PipelineNode): PlannedStep | null => {
+    if (total >= MAX_STEPS) {
+      return null
+    }
+    const visit = (visits.get(node.id) ?? 0) + 1
+    visits.set(node.id, visit)
+    total += 1
+    return { node, visit }
+  }
+
+  const pushWave = (nodes: PipelineNode[]) => {
+    const steps: PlannedStep[] = []
+    for (const node of nodes) {
+      const step = bump(node)
+      if (step) {
+        steps.push(step)
+      }
+    }
+    if (steps.length > 0) {
+      planned.push(steps)
+    }
+  }
+
+  const waveIndex = new Map<string, number>()
+  waves.forEach((wave, index) => {
+    for (const node of wave) {
+      waveIndex.set(node.id, index)
+    }
+  })
+
+  for (const wave of waves) {
+    pushWave(wave)
+    for (const node of wave) {
+      const self = loopEdgesOf(graph).find(
+        (edge) => edge.source === node.id && edge.target === node.id
+      )
+      if (!self) {
+        continue
+      }
+      const extra = loopLimit(node, self) - 1
+      for (let i = 0; i < extra; i += 1) {
+        pushWave([node])
+      }
+    }
+  }
+
+  const seenCycles = new Set<string>()
+  for (const edge of loopEdgesOf(graph)) {
+    if (edge.source === edge.target) {
+      continue
+    }
+    const cycle = cycleAlongFlow(graph, edge.target, edge.source)
+    if (cycle.length === 0) {
+      const target = byId.get(edge.target)
+      if (target) {
+        const extra = loopLimit(target, edge) - 1
+        for (let i = 0; i < extra; i += 1) {
+          pushWave([target])
+        }
+      }
+      continue
+    }
+    const key = cycle.join(">")
+    if (seenCycles.has(key)) {
+      continue
+    }
+    seenCycles.add(key)
+    const source = byId.get(edge.source)
+    const extra = loopLimit(source ?? cycleNodes(graph, cycle)[0], edge) - 1
+    const groups = groupByWave(cycle, waveIndex, byId)
+    for (let i = 0; i < extra; i += 1) {
+      for (const group of groups) {
+        pushWave(group)
+      }
+    }
+  }
+
+  if (planned.length === 0) {
+    return { error: "Nothing to run" }
+  }
+  return planned
+}
+
+function cycleNodes(graph: PipelineGraph, ids: string[]) {
+  const byId = new Map(graph.nodes.map((node) => [node.id, node]))
+  return ids
+    .map((id) => byId.get(id))
+    .filter((node): node is PipelineNode => Boolean(node))
+}
+
+function groupByWave(
+  ids: string[],
+  waveIndex: Map<string, number>,
+  byId: Map<string, PipelineNode>
+) {
+  const groups: PipelineNode[][] = []
+  let current: PipelineNode[] = []
+  let currentWave: number | null = null
+  for (const id of ids) {
+    const node = byId.get(id)
+    if (!node) {
+      continue
+    }
+    const wave = waveIndex.get(id) ?? -1
+    if (currentWave === null || wave !== currentWave) {
+      if (current.length > 0) {
+        groups.push(current)
+      }
+      current = [node]
+      currentWave = wave
+    } else {
+      current.push(node)
+    }
+  }
+  if (current.length > 0) {
+    groups.push(current)
+  }
+  return groups
+}
+
+function cycleAlongFlow(
+  graph: PipelineGraph,
+  from: string,
+  to: string
+) {
+  const flow = flowEdgesOf(graph)
+  const fromSet = new Set([from, ...reachableFrom(from, flow)])
+  const reachesTo = new Set<string>([to])
+  for (const node of graph.nodes) {
+    if (node.id !== to && reachableFrom(node.id, flow).has(to)) {
+      reachesTo.add(node.id)
+    }
+  }
+  const ids = graph.nodes
+    .map((node) => node.id)
+    .filter((id) => fromSet.has(id) && reachesTo.has(id))
+  const order = new Map(ids.map((id, index) => [id, index]))
+  const waves = topoWaves({
+    nodes: graph.nodes.filter((node) => order.has(node.id)),
+    edges: flow.filter((edge) => order.has(edge.source) && order.has(edge.target)),
+  })
+  if ("error" in waves) {
+    return ids
+  }
+  return waves.flat().map((node) => node.id)
 }
 
 function migrateLegacyGraph(
@@ -466,6 +784,28 @@ function parseNode(raw: unknown): PipelineNode | { error: string } {
     return { error: `Bad input on ${label}` }
   }
 
+  let guyId: string | null = null
+  if (dataRaw.guyId !== null && dataRaw.guyId !== undefined && dataRaw.guyId !== "") {
+    const parsedGuy = parseId(dataRaw.guyId, `${label} guy`)
+    if (typeof parsedGuy !== "string") {
+      return parsedGuy
+    }
+    guyId = parsedGuy
+  }
+
+  const color =
+    typeof dataRaw.color === "string" && /^#[0-9a-fA-F]{6}$/.test(dataRaw.color)
+      ? dataRaw.color.toLowerCase()
+      : DEFAULT_FACE.color
+  const avatarEyes = parseTrait(dataRaw.avatarEyes, AVATAR_EYES, DEFAULT_FACE.avatarEyes)
+  const avatarFacialHair = parseTrait(
+    dataRaw.avatarFacialHair,
+    AVATAR_FACIAL_HAIR,
+    DEFAULT_FACE.avatarFacialHair
+  )
+  const avatarHat = parseTrait(dataRaw.avatarHat, AVATAR_HATS, DEFAULT_FACE.avatarHat)
+  const maxLoops = parseMaxLoops(dataRaw.maxLoops)
+
   return {
     id,
     type: "step",
@@ -475,6 +815,12 @@ function parseNode(raw: unknown): PipelineNode | { error: string } {
       model: dataRaw.model,
       systemPrompt,
       inputFrom,
+      guyId,
+      color,
+      avatarEyes,
+      avatarFacialHair,
+      avatarHat,
+      ...(maxLoops ? { maxLoops } : {}),
     },
   }
 }
@@ -502,10 +848,38 @@ function parseEdge(
   if (!ids.has(source) || !ids.has(target)) {
     return { error: `Edge ${id} points at a missing node` }
   }
-  if (source === target) {
-    return { error: `Edge ${id} cannot loop on itself` }
+  const kind: PipelineEdgeKind =
+    value.kind === "loop" || source === target ? "loop" : "flow"
+  const max = parseMaxLoops(value.max)
+  return {
+    id,
+    source,
+    target,
+    kind,
+    ...(max ? { max } : {}),
   }
-  return { id, source, target }
+}
+
+function parseTrait<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  fallback: T
+): T {
+  if (typeof value === "string" && allowed.includes(value as T)) {
+    return value as T
+  }
+  return fallback
+}
+
+function parseMaxLoops(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return undefined
+  }
+  const n = typeof value === "number" ? value : Number(value)
+  if (!Number.isFinite(n)) {
+    return undefined
+  }
+  return Math.min(MAX_LOOPS, Math.max(1, Math.floor(n)))
 }
 
 function parseId(value: unknown, label: string) {

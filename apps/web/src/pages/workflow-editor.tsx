@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 
 import { Button } from "@workspace/ui/components/button"
@@ -13,10 +13,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@workspace/ui/components/sheet"
-import { PipelineCanvas } from "@/components/pipeline-canvas"
+import {
+  PipelineCanvas,
+  type PipelineCanvasHandle,
+  type SelectedBoardNode,
+} from "@/components/pipeline-canvas"
+import { WorkflowChat } from "@/components/workflow-chat"
+import { listGuys, type Guy } from "@/lib/guys"
 import {
   deletePipeline,
   getPipeline,
+  hydrateGraph,
   runInputs,
   startPipelineRun,
   updatePipeline,
@@ -31,9 +38,13 @@ export function WorkflowEditorPage() {
 function WorkflowEditor() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const canvasRef = useRef<PipelineCanvasHandle>(null)
   const [pipeline, setPipeline] = useState<Pipeline | null>(null)
+  const [guys, setGuys] = useState<Guy[]>([])
   const [name, setName] = useState("")
   const [graph, setGraph] = useState<PipelineGraph | null>(null)
+  const [chatGuy, setChatGuy] = useState<Guy | null>(null)
+  const [boardLabel, setBoardLabel] = useState<string | null>(null)
   const [missing, setMissing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -43,19 +54,24 @@ function WorkflowEditor() {
   const [runValues, setRunValues] = useState<Record<string, string>>({})
   const [running, setRunning] = useState(false)
 
+  const onGraphChange = useCallback((next: PipelineGraph) => {
+    setGraph(next)
+  }, [])
+
   useEffect(() => {
     if (!id) {
       return
     }
     let cancelled = false
-    getPipeline(id)
-      .then((row) => {
+    Promise.all([getPipeline(id), listGuys()])
+      .then(([row, rows]) => {
         if (cancelled) {
           return
         }
+        setGuys(rows)
         setPipeline(row)
         setName(row.name)
-        setGraph(row.graph)
+        setGraph(hydrateGraph(row.graph, rows))
       })
       .catch((caught: unknown) => {
         if (cancelled) {
@@ -106,6 +122,24 @@ function WorkflowEditor() {
   const currentGraph = graph
   const fields = runInputs(currentGraph)
 
+  function focusNode(node: SelectedBoardNode | null) {
+    if (!node) {
+      setChatGuy(null)
+      setBoardLabel(null)
+      return
+    }
+    if (node.data.guyId) {
+      const found = guys.find((guy) => guy.id === node.data.guyId)
+      if (found) {
+        setChatGuy(found)
+      }
+      setBoardLabel(null)
+      return
+    }
+    setChatGuy(null)
+    setBoardLabel(node.data.label)
+  }
+
   async function save() {
     setSaving(true)
     setError(null)
@@ -113,7 +147,7 @@ function WorkflowEditor() {
       const updated = await updatePipeline(row.id, { name, graph: currentGraph })
       setPipeline(updated)
       setName(updated.name)
-      setGraph(updated.graph)
+      setGraph(hydrateGraph(updated.graph, guys))
       setSaving(false)
       return true
     } catch (caught) {
@@ -162,6 +196,15 @@ function WorkflowEditor() {
     }
   }
 
+  function onSpawned(guy: Guy, model: string) {
+    setGuys((current) =>
+      current.some((row) => row.id === guy.id) ? current : [guy, ...current]
+    )
+    setChatGuy(guy)
+    setBoardLabel(null)
+    canvasRef.current?.placeGuy(guy, model)
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
@@ -200,15 +243,32 @@ function WorkflowEditor() {
           {error}
         </p>
       ) : null}
-      <PipelineCanvas key={row.id} graph={currentGraph} onChange={setGraph} />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 w-full shrink-0 flex-col border-b border-border max-lg:h-[min(22rem,50vh)] lg:h-auto lg:w-[22rem] lg:self-stretch lg:border-r lg:border-b-0">
+          <WorkflowChat
+            guy={chatGuy}
+            boardLabel={boardLabel}
+            onSpawned={onSpawned}
+            onClear={() => focusNode(null)}
+          />
+        </div>
+        <PipelineCanvas
+          key={row.id}
+          ref={canvasRef}
+          graph={currentGraph}
+          guys={guys}
+          onChange={onGraphChange}
+          onSelect={focusNode}
+        />
+      </div>
       <Sheet open={runOpen} onOpenChange={setRunOpen}>
         <SheetContent>
           <SheetHeader>
             <SheetTitle>Run</SheetTitle>
             <SheetDescription>
               {fields.length > 0
-                ? "These nodes take text when you run."
-                : "Every node reads from another node. It will run as-is."}
+                ? "Guys with no incoming arrow take the first text."
+                : "Every guy reads from someone else. It will run as-is."}
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-col gap-4 px-8">

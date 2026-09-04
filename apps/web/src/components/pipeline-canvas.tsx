@@ -1,47 +1,104 @@
-import { useCallback, useEffect, useRef } from "react"
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  type DragEvent,
+} from "react"
 import {
   Background,
+  BackgroundVariant,
+  ConnectionMode,
   Controls,
+  MarkerType,
   ReactFlow,
   ReactFlowProvider,
   addEdge,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   type Connection,
   type Edge,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
-import { Textarea } from "@workspace/ui/components/textarea"
-import { StepFlowNode, type FlowNode } from "@/components/pipeline-nodes"
+import { GuyMark } from "@/components/guy-mark"
+import {
+  BoardEdge,
+  GuyFlowNode,
+  type FlowEdge,
+  type FlowNode,
+} from "@/components/pipeline-nodes"
+import type { Guy } from "@/lib/guys"
 import {
   CHAT_MODELS,
+  DEFAULT_FACE,
+  DEFAULT_LOOPS,
   MAX_NODES,
-  MODELS,
-  modelLabel,
+  hydrateGraph,
+  wouldCreateCycle,
+  type PipelineEdgeKind,
   type PipelineGraph,
   type PipelineNodeData,
 } from "@/lib/pipelines"
 
-const pipelineNodeTypes = {
-  step: StepFlowNode,
+const nodeTypes = { step: GuyFlowNode }
+const edgeTypes = { board: BoardEdge }
+
+const defaultEdgeOptions = {
+  type: "board" as const,
+  markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
 }
 
-const TEXT_INPUT = ""
+export type SelectedBoardNode = {
+  id: string
+  data: PipelineNodeData
+}
 
-export function PipelineCanvas({
-  graph,
-  onChange,
-}: {
-  graph: PipelineGraph
-  onChange: (graph: PipelineGraph) => void
-}) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(toFlow(graph).nodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(toFlow(graph).edges)
+export type PipelineCanvasHandle = {
+  placeGuy: (guy: Guy, model?: string) => string | null
+}
+
+export const PipelineCanvas = forwardRef<
+  PipelineCanvasHandle,
+  {
+    graph: PipelineGraph
+    guys: Guy[]
+    onChange: (graph: PipelineGraph) => void
+    onSelect: (node: SelectedBoardNode | null) => void
+  }
+>(function PipelineCanvas(props, ref) {
+  return (
+    <ReactFlowProvider>
+      <CanvasBody ref={ref} {...props} />
+    </ReactFlowProvider>
+  )
+})
+
+const CanvasBody = forwardRef<
+  PipelineCanvasHandle,
+  {
+    graph: PipelineGraph
+    guys: Guy[]
+    onChange: (graph: PipelineGraph) => void
+    onSelect: (node: SelectedBoardNode | null) => void
+  }
+>(function CanvasBody(
+  { graph, guys, onChange, onSelect },
+  ref
+) {
+  const hydrated = useMemo(() => hydrateGraph(graph, guys), [graph, guys])
+  const initial = toFlow(hydrated)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
   const skipSync = useRef(true)
+  const nodesRef = useRef(nodes)
+  nodesRef.current = nodes
+  const edgesRef = useRef(edges)
+  edgesRef.current = edges
+  const { screenToFlowPosition } = useReactFlow()
 
   useEffect(() => {
     if (skipSync.current) {
@@ -51,234 +108,194 @@ export function PipelineCanvas({
     onChange(fromFlow(nodes, edges))
   }, [nodes, edges, onChange])
 
-  const selected = nodes.find((node) => node.selected)
-
-  const onConnect = useCallback((connection: Connection) => {
-    setEdges((current) =>
-      addEdge(
-        {
-          ...connection,
-          id: `e-${connection.source}-${connection.target}-${shortId()}`,
-          type: "smoothstep",
-        },
-        current
-      )
-    )
-  }, [setEdges])
-
-  function addNode() {
-    if (nodes.length >= MAX_NODES) {
-      return
-    }
-    const model = CHAT_MODELS[0].id
-    const node: FlowNode = {
-      id: `n${shortId()}`,
-      type: "step",
-      position: { x: 80 + nodes.length * 36, y: 80 + nodes.length * 28 },
-      data: {
-        label: uniqueLabel(modelLabel(model), nodes),
-        model,
-        systemPrompt: "",
-      },
-      selected: true,
-    }
-    setNodes((current) => [
-      ...current.map((item) => ({ ...item, selected: false })),
-      node,
-    ])
-  }
-
-  function updateSelected(data: PipelineNodeData) {
-    if (!selected) {
-      return
-    }
-    const previousFrom = selected.data.inputFrom ?? null
-    const nextFrom = data.inputFrom ?? null
-    setNodes((current) =>
-      current.map((node) =>
-        node.id === selected.id ? { ...node, data } : node
-      )
-    )
-    if (previousFrom === nextFrom) {
-      return
-    }
-    setEdges((current) => {
-      let next = current
-      if (previousFrom) {
-        next = next.filter(
-          (edge) =>
-            !(edge.source === previousFrom && edge.target === selected.id)
-        )
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (!connection.source || !connection.target) {
+        return
       }
-      if (
-        nextFrom &&
-        !next.some(
-          (edge) => edge.source === nextFrom && edge.target === selected.id
-        )
-      ) {
-        next = addEdge(
+      const kind: PipelineEdgeKind = wouldCreateCycle(
+        fromFlow(nodes, edges).edges,
+        connection.source,
+        connection.target
+      )
+        ? "loop"
+        : "flow"
+      setEdges((current) =>
+        addEdge(
           {
-            id: `e-${nextFrom}-${selected.id}-${shortId()}`,
-            source: nextFrom,
-            target: selected.id,
-            type: "smoothstep",
+            ...connection,
+            id: `e-${connection.source}-${connection.target}-${shortId()}`,
+            type: "board",
+            data: { kind },
+            markerEnd: defaultEdgeOptions.markerEnd,
+            style:
+              kind === "loop" ? { strokeDasharray: "6 4" } : undefined,
           },
-          next
+          current
         )
+      )
+    },
+    [edges, nodes, setEdges]
+  )
+
+  const placeGuy = useCallback(
+    (guy: Guy, model?: string, position?: { x: number; y: number }) => {
+      const current = nodesRef.current
+      const existing = current.find((node) => node.data.guyId === guy.id)
+      if (existing) {
+        setNodes((nodes) =>
+          nodes.map((node) => ({
+            ...node,
+            selected: node.id === existing.id,
+          }))
+        )
+        onSelect({ id: existing.id, data: existing.data })
+        return existing.id
       }
-      return next
-    })
+      if (current.length >= MAX_NODES) {
+        return null
+      }
+      const id = `n${shortId()}`
+      const data = guyNodeData(guy, model)
+      const node: FlowNode = {
+        id,
+        type: "step",
+        position: position ?? {
+          x: 80 + (current.length % 5) * 140,
+          y: 80 + Math.floor(current.length / 5) * 140,
+        },
+        data,
+        selected: true,
+      }
+      const next = [
+        ...current.map((item) => ({ ...item, selected: false })),
+        node,
+      ]
+      setNodes(next)
+      onChange(fromFlow(next, edgesRef.current))
+      onSelect({ id, data })
+      return id
+    },
+    [onChange, onSelect, setNodes]
+  )
+
+  useImperativeHandle(ref, () => ({ placeGuy }), [placeGuy])
+
+  function onDragOver(event: DragEvent) {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
   }
+
+  function onDrop(event: DragEvent) {
+    event.preventDefault()
+    const guyId = event.dataTransfer.getData("application/j4ck-guy")
+    const guy = guys.find((row) => row.id === guyId)
+    if (!guy) {
+      return
+    }
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    })
+    placeGuy(guy, undefined, position)
+  }
+
+  const onBoard = new Set(
+    nodes.map((node) => node.data.guyId).filter((id): id is string => Boolean(id))
+  )
+  const tray = guys.filter((guy) => !onBoard.has(guy.id))
 
   return (
-    <ReactFlowProvider>
-      <div className="flex min-h-0 flex-1">
-        <div className="relative min-h-0 min-w-0 flex-1">
-          <div className="absolute top-3 left-3 z-10">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={nodes.length >= MAX_NODES}
-              onClick={addNode}
-            >
-              Add node
-            </Button>
-          </div>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={pipelineNodeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            fitView
-            fitViewOptions={{ padding: 0.2, minZoom: 0.35 }}
-            minZoom={0.3}
-            className="h-full bg-background"
-            deleteKeyCode={["Backspace", "Delete"]}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background gap={22} size={1} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
-        </div>
-        {selected ? (
-          <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-l border-border p-4">
-            <NodeInspector
-              nodeId={selected.id}
-              data={selected.data}
-              nodes={nodes}
-              edges={edges}
-              onChange={updateSelected}
-            />
-          </aside>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="relative min-h-0 min-w-0 flex-1">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={defaultEdgeOptions}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onSelectionChange={({ nodes: selected }) => {
+            const node = selected[0]
+            if (node) {
+              onSelect({ id: node.id, data: node.data })
+            }
+          }}
+          isValidConnection={() => true}
+          connectionMode={ConnectionMode.Loose}
+          fitView
+          fitViewOptions={{ padding: 0.35, minZoom: 0.35 }}
+          minZoom={0.25}
+          className="h-full bg-muted/30"
+          deleteKeyCode={["Backspace", "Delete"]}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={22}
+            size={1.4}
+          />
+          <Controls showInteractive={false} />
+        </ReactFlow>
+      </div>
+      <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-t border-border bg-background px-3 py-2">
+        <p className="shrink-0 text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
+          Drop
+        </p>
+        {tray.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {guys.length === 0
+              ? "Invent one in chat."
+              : "Everyone is already on the board."}
+          </p>
         ) : (
-          <aside className="hidden w-72 shrink-0 border-l border-border p-4 lg:block">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Add a node. Each one takes text or another node, a model, and
-              instructions.
-            </p>
-          </aside>
+          tray.map((guy) => (
+            <button
+              key={guy.id}
+              type="button"
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData("application/j4ck-guy", guy.id)
+                event.dataTransfer.effectAllowed = "move"
+              }}
+              onClick={() => placeGuy(guy)}
+              className="flex shrink-0 items-center gap-2 border border-transparent px-1 py-0.5 hover:border-foreground/40"
+              aria-label={`Drop ${guy.name}`}
+            >
+              <GuyMark
+                color={guy.color}
+                avatarEyes={guy.avatarEyes}
+                avatarFacialHair={guy.avatarFacialHair}
+                avatarHat={guy.avatarHat}
+                className="size-8"
+              />
+              <span className="font-heading text-[0.625rem] font-semibold tracking-widest uppercase">
+                {guy.name}
+              </span>
+            </button>
+          ))
         )}
       </div>
-    </ReactFlowProvider>
-  )
-}
-
-function NodeInspector({
-  nodeId,
-  data,
-  nodes,
-  edges,
-  onChange,
-}: {
-  nodeId: string
-  data: PipelineNodeData
-  nodes: FlowNode[]
-  edges: Edge[]
-  onChange: (data: PipelineNodeData) => void
-}) {
-  const downstream = reachableFrom(nodeId, edges)
-  const sources = nodes.filter(
-    (node) =>
-      node.id !== nodeId &&
-      (node.id === data.inputFrom || !downstream.has(node.id))
-  )
-  const inputValue = data.inputFrom ?? TEXT_INPUT
-
-  function onModelChange(model: string) {
-    const previous = modelLabel(data.model)
-    const next = modelLabel(model)
-    onChange({
-      ...data,
-      model,
-      label: data.label === previous ? next : data.label,
-    })
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <label className="flex flex-col gap-2">
-        <Label htmlFor="node-name">Name</Label>
-        <Input
-          id="node-name"
-          value={data.label}
-          onChange={(event) =>
-            onChange({ ...data, label: event.target.value })
-          }
-        />
-      </label>
-      <label className="flex flex-col gap-2">
-        <Label htmlFor="node-input">Input</Label>
-        <select
-          id="node-input"
-          className="h-10 border-b border-input bg-transparent text-sm outline-none"
-          value={inputValue}
-          onChange={(event) => {
-            const value = event.target.value
-            onChange({
-              ...data,
-              inputFrom: value === TEXT_INPUT ? null : value,
-            })
-          }}
-        >
-          <option value={TEXT_INPUT}>Text, when you run</option>
-          {sources.map((node) => (
-            <option key={node.id} value={node.id}>
-              {node.data.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-2">
-        <Label htmlFor="node-model">Model</Label>
-        <select
-          id="node-model"
-          className="h-10 border-b border-input bg-transparent text-sm outline-none"
-          value={data.model}
-          onChange={(event) => onModelChange(event.target.value)}
-        >
-          {MODELS.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-2">
-        <Label htmlFor="node-system">Instructions</Label>
-        <Textarea
-          id="node-system"
-          value={data.systemPrompt}
-          placeholder="What this step should do"
-          onChange={(event) =>
-            onChange({ ...data, systemPrompt: event.target.value })
-          }
-        />
-      </label>
     </div>
   )
+})
+
+function guyNodeData(guy: Guy, model?: string): PipelineNodeData {
+  return {
+    label: guy.name,
+    model: model || CHAT_MODELS[0].id,
+    systemPrompt: guy.backstory,
+    guyId: guy.id,
+    color: guy.color,
+    avatarEyes: guy.avatarEyes,
+    avatarFacialHair: guy.avatarFacialHair,
+    avatarHat: guy.avatarHat,
+    maxLoops: DEFAULT_LOOPS,
+  }
 }
 
 function toFlow(graph: PipelineGraph) {
@@ -286,74 +303,81 @@ function toFlow(graph: PipelineGraph) {
     id: node.id,
     type: "step",
     position: node.position,
-    data: node.data,
+    data: {
+      ...DEFAULT_FACE,
+      ...node.data,
+    },
   }))
-  const edges: Edge[] = graph.edges.map((edge) => ({
+  const edges: FlowEdge[] = graph.edges.map((edge) => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    type: "smoothstep",
+    type: "board",
+    data: { kind: edge.kind ?? "flow" },
+    markerEnd: defaultEdgeOptions.markerEnd,
+    style: edge.kind === "loop" ? { strokeDasharray: "6 4" } : undefined,
   }))
   return { nodes, edges }
 }
 
 function fromFlow(nodes: FlowNode[], edges: Edge[]): PipelineGraph {
   const ids = new Set(nodes.map((node) => node.id))
-  return {
-    nodes: nodes.map((node) => ({
-      id: node.id,
-      type: "step",
-      position: node.position,
-      data: {
-        ...node.data,
-        inputFrom:
-          node.data.inputFrom && ids.has(node.data.inputFrom)
-            ? node.data.inputFrom
-            : null,
-      },
-    })),
-    edges: edges
-      .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
-      .map((edge) => ({
+  const mapped: FlowEdge[] = edges
+    .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
+    .map((edge) => {
+      const kind: PipelineEdgeKind =
+        edge.source === edge.target ||
+        (edge.data as { kind?: PipelineEdgeKind } | undefined)?.kind === "loop"
+          ? "loop"
+          : "flow"
+      return {
         id: edge.id,
         source: edge.source,
         target: edge.target,
-      })),
-  }
-}
+        type: "board",
+        data: { kind },
+      }
+    })
 
-function reachableFrom(start: string, edges: Edge[]) {
-  const outgoing = new Map<string, string[]>()
-  for (const edge of edges) {
-    const list = outgoing.get(edge.source) ?? []
-    list.push(edge.target)
-    outgoing.set(edge.source, list)
-  }
-  const seen = new Set<string>()
-  const stack = [...(outgoing.get(start) ?? [])]
-  while (stack.length > 0) {
-    const id = stack.pop()
-    if (!id || seen.has(id)) {
-      continue
+  const classified = mapped.map((edge, index, list) => {
+    if (edge.data?.kind === "loop") {
+      return edge
     }
-    seen.add(id)
-    for (const next of outgoing.get(id) ?? []) {
-      stack.push(next)
-    }
-  }
-  return seen
-}
+    const previous = list.slice(0, index).map((item) => ({
+      id: item.id,
+      source: item.source,
+      target: item.target,
+      kind: item.data?.kind ?? "flow",
+    }))
+    const kind = wouldCreateCycle(previous, edge.source, edge.target)
+      ? "loop"
+      : "flow"
+    return { ...edge, data: { kind } }
+  })
 
-function uniqueLabel(base: string, nodes: FlowNode[]) {
-  const used = new Set(nodes.map((node) => node.data.label))
-  if (!used.has(base)) {
-    return base
+  return {
+    nodes: nodes.map((node) => {
+      const incoming = classified.find(
+        (edge) => edge.target === node.id && edge.data?.kind !== "loop"
+      )
+      return {
+        id: node.id,
+        type: "step" as const,
+        position: node.position,
+        data: {
+          ...DEFAULT_FACE,
+          ...node.data,
+          inputFrom: incoming?.source ?? null,
+        },
+      }
+    }),
+    edges: classified.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      kind: edge.data?.kind === "loop" ? "loop" : "flow",
+    })),
   }
-  let index = 2
-  while (used.has(`${base} ${index}`)) {
-    index += 1
-  }
-  return `${base} ${index}`
 }
 
 function shortId() {

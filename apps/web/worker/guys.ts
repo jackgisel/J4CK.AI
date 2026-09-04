@@ -22,6 +22,8 @@ import {
   writeFile,
 } from "./home"
 import { runGuyTurn } from "./agent"
+import { inventGuy } from "./invent-guy"
+import { CHAT_MODELS, IMAGE_MODELS } from "./pipeline-graph"
 import { getRequestUser } from "./session"
 import { serializeMessage } from "./turn"
 
@@ -225,6 +227,74 @@ guys.post("/", async (c) => {
   await seedHome(c.env.BUCKET, asGuyHome(created))
 
   return c.json({ guy: serializeGuy(created, null) }, 201)
+})
+
+guys.post("/spawn", async (c) => {
+  const body = await readObject(c)
+  if (!body) {
+    return c.json({ error: "Expected JSON" }, 400)
+  }
+  const prompt = parseSpawnPrompt(body.prompt)
+  if (typeof prompt !== "string") {
+    return c.json({ error: prompt.error }, 400)
+  }
+
+  const invented = await inventGuy(c.env.AI, prompt)
+  const now = new Date()
+  const db = createDb(c.env.DB)
+  const [created] = await db
+    .insert(guy)
+    .values({
+      id: crypto.randomUUID(),
+      userId: c.get("userId"),
+      name: invented.name,
+      color: invented.color,
+      backstory: invented.backstory,
+      avatarEyes: invented.avatarEyes,
+      avatarFacialHair: invented.avatarFacialHair,
+      avatarHat: invented.avatarHat,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+
+  if (!created) {
+    return c.json({ error: "Could not save" }, 500)
+  }
+
+  await seedHome(c.env.BUCKET, asGuyHome(created))
+
+  const createdAt = new Date()
+  const [userRow] = await db
+    .insert(message)
+    .values({
+      id: crypto.randomUUID(),
+      guyId: created.id,
+      role: "user",
+      body: prompt,
+      createdAt,
+    })
+    .returning()
+  const [greeting] = await db
+    .insert(message)
+    .values({
+      id: crypto.randomUUID(),
+      guyId: created.id,
+      role: "assistant",
+      body: invented.greeting,
+      createdAt: new Date(createdAt.getTime() + 1),
+    })
+    .returning()
+
+  return c.json(
+    {
+      guy: serializeGuy(created, greeting ?? userRow ?? null),
+      model:
+        invented.model === "image" ? IMAGE_MODELS[0].id : CHAT_MODELS[0].id,
+      greeting: greeting ? serializeMessage(greeting) : null,
+    },
+    201
+  )
 })
 
 guys.get("/:id", async (c) => {
@@ -681,6 +751,20 @@ function parseTrait<T extends string>(
     return { error: `Unknown ${label}` }
   }
   return value as T
+}
+
+function parseSpawnPrompt(value: unknown) {
+  if (typeof value !== "string") {
+    return { error: "Say who they are" }
+  }
+  const prompt = value.trim()
+  if (!prompt) {
+    return { error: "Say who they are" }
+  }
+  if (prompt.length > 2000) {
+    return { error: "Keep it under 2000 characters" }
+  }
+  return prompt
 }
 
 function parseBody(value: unknown) {
