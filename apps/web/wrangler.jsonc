@@ -71,6 +71,6 @@
   "vars": {
     "EMAIL_FROM": "noreply@j4ck.ai",
     "BETTER_AUTH_SECRET": "WiJtCLy4wS5OlKS52/JLSof9u8kYV4tv+IamJZq0UK8=",
-    "AI_GATEWAY_ID": ""
+    "AI_GATEWAY_ID": "j4ck-ai-gate"
   }
 }

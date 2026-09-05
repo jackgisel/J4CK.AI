@@ -1,17 +1,27 @@
+import { useCallback } from "react"
 import {
   BaseEdge,
   EdgeLabelRenderer,
   Handle,
   Position,
   getBezierPath,
+  useReactFlow,
   type Edge,
   type EdgeProps,
   type Node,
   type NodeProps,
 } from "@xyflow/react"
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 import { GuyMark } from "@/components/guy-mark"
 import {
+  MODELS,
   isImageModel,
   type PipelineEdgeKind,
   type PipelineNodeData,
@@ -21,9 +31,26 @@ import {
 export type FlowNode = Node<PipelineNodeData, PipelineNodeType>
 export type FlowEdge = Edge<{ kind: PipelineEdgeKind }>
 
-export function GuyFlowNode({ data, selected }: NodeProps<FlowNode>) {
+export function GuyFlowNode({ id, data, selected }: NodeProps<FlowNode>) {
+  const { setNodes } = useReactFlow<FlowNode>()
+  const pickModel = useCallback(
+    (value: string | null) => {
+      if (!value) {
+        return
+      }
+      setNodes((current) =>
+        current.map((node) =>
+          node.id === id
+            ? { ...node, data: { ...node.data, model: value } }
+            : node
+        )
+      )
+    },
+    [id, setNodes]
+  )
+
   return (
-    <div className="relative flex w-24 flex-col items-center gap-1">
+    <div className="relative flex w-28 flex-col items-center gap-1">
       <Handle
         type="target"
         position={Position.Left}
@@ -50,6 +77,22 @@ export function GuyFlowNode({ data, selected }: NodeProps<FlowNode>) {
       <p className="max-w-full truncate text-center text-[0.6rem] tracking-wide text-muted-foreground uppercase">
         {isImageModel(data.model) ? "image" : "bot"}
       </p>
+      <Select value={data.model} onValueChange={pickModel}>
+        <SelectTrigger
+          size="sm"
+          className="nodrag nopan h-6 w-full gap-1 px-1.5 text-[0.6rem] **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
+          aria-label={`Model for ${data.label}`}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="nodrag nopan">
+          {MODELS.map((item) => (
+            <SelectItem key={item.id} value={item.id} className="text-xs">
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Handle
         type="source"
         position={Position.Right}
@@ -122,5 +165,9 @@ function selfLoop(
   const lift = 72
   const swing = 28
   const path = `M ${sourceX} ${sourceY} C ${sourceX + swing} ${sourceY - lift}, ${targetX - swing} ${targetY - lift}, ${targetX} ${targetY}`
-  return [path, (sourceX + targetX) / 2, Math.min(sourceY, targetY) - lift * 0.55]
+  return [
+    path,
+    (sourceX + targetX) / 2,
+    Math.min(sourceY, targetY) - lift * 0.55,
+  ]
 }

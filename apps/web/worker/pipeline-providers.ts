@@ -264,27 +264,30 @@ function extractText(result: unknown) {
   return ""
 }
 
-async function extractImage(result: unknown): Promise<{
+export async function extractImage(result: unknown): Promise<{
   bytes: ArrayBuffer
   contentType: string
 }> {
-  const url = imageUrl(result)
-  if (url) {
-    if (url.startsWith("data:")) {
-      return decodeDataUrl(url)
+  const candidate = imageString(result)
+  if (candidate) {
+    if (candidate.startsWith("data:")) {
+      return decodeDataUrl(candidate)
     }
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error("Could not download generated image")
+    if (/^https?:\/\//.test(candidate)) {
+      const response = await fetch(candidate)
+      if (!response.ok) {
+        throw new Error("Could not download generated image")
+      }
+      const bytes = await response.arrayBuffer()
+      if (bytes.byteLength === 0 || bytes.byteLength > IMAGE_MAX_BYTES) {
+        throw new Error("Generated image was empty or too large")
+      }
+      return {
+        bytes,
+        contentType: response.headers.get("content-type") || "image/png",
+      }
     }
-    const bytes = await response.arrayBuffer()
-    if (bytes.byteLength === 0 || bytes.byteLength > IMAGE_MAX_BYTES) {
-      throw new Error("Generated image was empty or too large")
-    }
-    return {
-      bytes,
-      contentType: response.headers.get("content-type") || "image/png",
-    }
+    return decodeBase64(candidate, "image/png")
   }
 
   const raw = imageBytes(result)
@@ -294,28 +297,47 @@ async function extractImage(result: unknown): Promise<{
   throw new Error(`Image model returned no image. ${hint(result)}`)
 }
 
-function imageUrl(result: unknown): string | null {
-  if (typeof result === "string" && /^https?:\/\//.test(result)) {
-    return result
+function imageString(result: unknown): string | null {
+  if (typeof result === "string" && result.trim()) {
+    return result.trim()
   }
   if (!result || typeof result !== "object") {
     return null
   }
   const value = result as Record<string, unknown>
-  if (typeof value.image === "string") {
-    return value.image
+  const direct = firstString(value.image, value.b64_json)
+  if (direct) {
+    return direct
   }
-  if (Array.isArray(value.images) && typeof value.images[0] === "string") {
-    return value.images[0]
-  }
-  const nested = value.result
-  if (nested && typeof nested === "object") {
-    const inner = nested as Record<string, unknown>
-    if (typeof inner.image === "string") {
-      return inner.image
+  if (Array.isArray(value.images)) {
+    const fromList = firstString(value.images[0])
+    if (fromList) {
+      return fromList
     }
-    if (Array.isArray(inner.images) && typeof inner.images[0] === "string") {
-      return inner.images[0]
+  }
+  // OpenAI images API: { data: [{ b64_json }] } or { data: [{ url }] }.
+  if (
+    Array.isArray(value.data) &&
+    value.data[0] &&
+    typeof value.data[0] === "object"
+  ) {
+    const entry = value.data[0] as Record<string, unknown>
+    const fromData = firstString(entry.b64_json, entry.url, entry.image)
+    if (fromData) {
+      return fromData
+    }
+  }
+  const nested = value.result ?? value.response
+  if (nested && typeof nested === "object") {
+    return imageString(nested)
+  }
+  return null
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
     }
   }
   return null
@@ -344,12 +366,24 @@ function decodeDataUrl(url: string) {
   if (!match) {
     throw new Error("Bad image data URL")
   }
-  const binary = atob(match[2])
+  return decodeBase64(match[2], match[1])
+}
+
+function decodeBase64(value: string, contentType: string) {
+  let binary: string
+  try {
+    binary = atob(value.replace(/\s/g, ""))
+  } catch {
+    throw new Error("Image model returned data that was not an image")
+  }
+  if (binary.length === 0 || binary.length > IMAGE_MAX_BYTES) {
+    throw new Error("Generated image was empty or too large")
+  }
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i += 1) {
     bytes[i] = binary.charCodeAt(i)
   }
-  return { bytes: bytes.buffer, contentType: match[1] }
+  return { bytes: bytes.buffer, contentType }
 }
 
 function bufferToBase64(bytes: ArrayBuffer) {
