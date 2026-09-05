@@ -262,7 +262,7 @@ function WorkflowEditor() {
         />
       </div>
       <Sheet open={runOpen} onOpenChange={setRunOpen}>
-        <SheetContent>
+        <SheetContent className="data-[side=right]:sm:max-w-2xl">
           <SheetHeader>
             <SheetTitle>Run</SheetTitle>
             <SheetDescription>
@@ -271,7 +271,7 @@ function WorkflowEditor() {
                 : "Every guy reads from someone else. It will run as-is."}
             </SheetDescription>
           </SheetHeader>
-          <div className="flex flex-col gap-4 px-8">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-8 pb-2">
             {fields.map((field) => (
               <label key={field.key} className="flex flex-col gap-2">
                 <Label htmlFor={`run-${field.key}`}>{field.label}</Label>
@@ -284,6 +284,7 @@ function WorkflowEditor() {
                       [field.key]: event.target.value,
                     }))
                   }
+                  className="max-h-[50vh] min-h-40 resize-y overflow-y-auto font-mono text-xs leading-relaxed"
                 />
               </label>
             ))}
