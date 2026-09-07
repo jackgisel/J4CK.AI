@@ -4,6 +4,7 @@ import {
   LaptopIcon,
   LayoutDashboardIcon,
   MessageSquareIcon,
+  SparklesIcon,
   UsersIcon,
   WorkflowIcon,
 } from "lucide-react"
@@ -37,6 +38,11 @@ const navMain = [
     title: "Messages",
     url: "/messages",
     icon: MessageSquareIcon,
+  },
+  {
+    title: "Studio",
+    url: "/studio",
+    icon: SparklesIcon,
   },
   {
     title: "Workflows",

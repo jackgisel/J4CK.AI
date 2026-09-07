@@ -172,6 +172,28 @@ export const pipelineRun = sqliteTable(
   ]
 )
 
+export const studioMessage = sqliteTable(
+  "studio_message",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    model: text("model").notNull(),
+    body: text("body").notNull().default(""),
+    artifactKey: text("artifact_key"),
+    contentType: text("content_type"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    index("studio_message_userId_createdAt_idx").on(
+      table.userId,
+      table.createdAt
+    ),
+  ]
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
@@ -179,6 +201,7 @@ export const userRelations = relations(user, ({ many }) => ({
   cliDevices: many(cliDevice),
   cliTokens: many(cliToken),
   pipelines: many(pipeline),
+  studioMessages: many(studioMessage),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -217,4 +240,8 @@ export const pipelineRunRelations = relations(pipelineRun, ({ one }) => ({
     references: [pipeline.id],
   }),
   user: one(user, { fields: [pipelineRun.userId], references: [user.id] }),
+}))
+
+export const studioMessageRelations = relations(studioMessage, ({ one }) => ({
+  user: one(user, { fields: [studioMessage.userId], references: [user.id] }),
 }))

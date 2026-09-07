@@ -12,6 +12,7 @@ import { LoginPage } from "@/pages/login"
 import { MessagesPage } from "@/pages/messages"
 import { NotFoundPage } from "@/pages/not-found"
 import { PrivacyPage } from "@/pages/privacy"
+import { StudioPage } from "@/pages/studio"
 import { ThreadPage } from "@/pages/thread"
 import { TosPage } from "@/pages/tos"
 import { WorkflowEditorPage } from "@/pages/workflow-editor"
@@ -32,6 +33,7 @@ export function App() {
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/contacts/new" element={<NewContactPage />} />
         <Route path="/contacts/:id" element={<ContactPage />} />
+        <Route path="/studio" element={<StudioPage />} />
         <Route path="/cli" element={<CliPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/messages/:id" element={<ThreadPage />} />

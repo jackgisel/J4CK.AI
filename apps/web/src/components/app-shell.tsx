@@ -16,6 +16,7 @@ export function AppShell() {
   const isThread = /^\/messages\/[^/]+$/.test(pathname)
   const isDashboard = pathname === "/dashboard"
   const isWorkflowWorkspace = /^\/workflows\/[^/]+/.test(pathname)
+  const isStudio = pathname === "/studio"
 
   return (
     <RequireSession>
@@ -34,7 +35,7 @@ export function AppShell() {
             <SiteHeader />
             <div
               className={
-                isThread || isWorkflowWorkspace
+                isThread || isWorkflowWorkspace || isStudio
                   ? "flex min-h-0 flex-1 flex-col overflow-hidden"
                   : isDashboard
                     ? "flex min-h-0 flex-1 flex-col overflow-y-auto"

@@ -192,7 +192,7 @@ async function loadParentImages(
   return images
 }
 
-async function runModel(
+export async function runModel(
   env: Env,
   model: string,
   inputs: Record<string, unknown>
@@ -212,7 +212,7 @@ async function runModel(
   }
 }
 
-function extractText(result: unknown) {
+export function extractText(result: unknown) {
   if (typeof result === "string") {
     return result.trim()
   }

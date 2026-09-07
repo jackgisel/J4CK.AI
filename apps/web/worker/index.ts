@@ -5,6 +5,7 @@ import { createAuth } from "./auth"
 import { cli } from "./cli"
 import { guys } from "./guys"
 import { pipelines } from "./pipelines"
+import { studio } from "./studio"
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -24,6 +25,7 @@ app.get("/api/health", async (c) => {
 app.route("/api/cli", cli)
 app.route("/api/guys", guys)
 app.route("/api/pipelines", pipelines)
+app.route("/api/studio", studio)
 
 app.get("/api/r2", async (c) => {
   const listed = await c.env.BUCKET.list({ limit: 20 })
