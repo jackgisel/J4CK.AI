@@ -4,7 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>j4ck.ai</title>
+    <meta
+      name="description"
+      content="The future of agent autonomy. Welcome to Jack AI."
+    />
+    <meta name="theme-color" content="#171717" />
+    <title>Jack AI</title>
+    <script>
+      try {
+        const storageKey = "theme"
+        const stored = localStorage.getItem(storageKey)
+        const theme =
+          stored === "light" || stored === "dark" || stored === "system"
+            ? stored
+            : "dark"
+        const dark =
+          theme === "dark" ||
+          (theme === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches)
+        document.documentElement.classList.add(dark ? "dark" : "light")
+        document.documentElement.style.colorScheme = dark ? "dark" : "light"
+      } catch {
+        document.documentElement.classList.add("dark")
+        document.documentElement.style.colorScheme = "dark"
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

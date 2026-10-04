@@ -8,8 +8,8 @@ const COLOR_SCHEME_QUERY = "(prefers-color-scheme: dark)"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  const [systemDark, setSystemDark] = React.useState(() =>
-    window.matchMedia(COLOR_SCHEME_QUERY).matches
+  const [systemDark, setSystemDark] = React.useState(
+    () => window.matchMedia(COLOR_SCHEME_QUERY).matches
   )
 
   React.useEffect(() => {
@@ -28,7 +28,7 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       size="icon-sm"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       onClick={() => setTheme(isDark ? "light" : "dark")}

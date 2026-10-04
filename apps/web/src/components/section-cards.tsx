@@ -6,6 +6,8 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 
+const cardClass = "@container/card rounded-none bg-card shadow-none ring-0"
+
 export function SectionCards({
   guys,
   active,
@@ -18,8 +20,8 @@ export function SectionCards({
   quiet: number
 }) {
   return (
-    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-      <Card className="@container/card">
+    <div className="grid grid-cols-1 gap-px bg-border px-0 lg:mx-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      <Card className={cardClass}>
         <CardHeader>
           <CardDescription>Guys</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -33,7 +35,7 @@ export function SectionCards({
           </div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+      <Card className={cardClass}>
         <CardHeader>
           <CardDescription>In a thread</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -45,7 +47,7 @@ export function SectionCards({
           <div className="text-muted-foreground">Someone has written</div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+      <Card className={cardClass}>
         <CardHeader>
           <CardDescription>Waiting on them</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -54,10 +56,12 @@ export function SectionCards({
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 font-medium">Last line was yours</div>
-          <div className="text-muted-foreground">They have not answered yet</div>
+          <div className="text-muted-foreground">
+            They have not answered yet
+          </div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+      <Card className={cardClass}>
         <CardHeader>
           <CardDescription>Not written yet</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">

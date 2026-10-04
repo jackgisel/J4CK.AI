@@ -11,9 +11,7 @@ export function RequireSession({ children }: { children: ReactNode }) {
   if (isPending) {
     return (
       <PublicChrome>
-        <p className="flex flex-1 items-center text-sm text-muted-foreground">
-          Loading…
-        </p>
+        <p className="kicker flex flex-1 items-center">Loading</p>
       </PublicChrome>
     )
   }

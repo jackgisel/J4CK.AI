@@ -1,16 +1,14 @@
 import { useState, type ReactNode } from "react"
-import { Link, NavLink, Outlet } from "react-router"
+import { NavLink, Outlet } from "react-router"
 
-import {
-  ConsentBanner,
-  hasAcceptedConsent,
-} from "@/components/consent-banner"
+import { BrandMark } from "@/components/brand-mark"
+import { ConsentBanner, hasAcceptedConsent } from "@/components/consent-banner"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { authClient } from "@/lib/auth-client"
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `text-[0.625rem] font-semibold tracking-widest uppercase ${
-    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+  `kicker transition-colors ${
+    isActive ? "text-foreground" : "hover:text-foreground"
   }`
 
 export function SiteShell() {
@@ -29,36 +27,35 @@ export function PublicChrome({ children }: { children: ReactNode }) {
     <div className="relative flex h-svh flex-col overflow-hidden bg-background">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 right-0 w-1/2 max-w-xl bg-[repeating-linear-gradient(90deg,transparent,transparent_31px,var(--border)_31px,var(--border)_32px)] opacity-60"
+        className="atmosphere-grid pointer-events-none absolute inset-0"
+      />
+      <div
+        aria-hidden
+        className="atmosphere-vignette pointer-events-none absolute inset-0"
       />
 
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 px-6 py-5 md:px-10">
-        <Link
-          to="/"
-          className="font-heading text-xs font-semibold tracking-widest uppercase"
-        >
-          j4ck.ai
-        </Link>
-        <div className="flex flex-wrap items-center justify-end gap-4">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-b border-border px-6 py-4 md:px-10">
+        <BrandMark />
+        <div className="flex flex-wrap items-center justify-end gap-5">
           {session ? (
             <NavLink to="/dashboard" className={navLinkClass}>
-              Dashboard
+              Studio
             </NavLink>
           ) : (
             <NavLink to="/login" className={navLinkClass}>
-              Log in
+              Enter
             </NavLink>
           )}
           <ThemeToggle />
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto px-6 py-16 md:px-10">
+      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-6 py-10 md:px-10">
         {children}
       </main>
 
       <footer
-        className={`relative z-10 flex shrink-0 items-center gap-5 px-6 py-5 md:px-10 ${
+        className={`relative z-10 flex shrink-0 items-center gap-6 border-t border-border px-6 py-4 md:px-10 ${
           accepted ? "" : "pb-24"
         }`}
       >
@@ -68,6 +65,9 @@ export function PublicChrome({ children }: { children: ReactNode }) {
         <NavLink to="/privacy" className={navLinkClass}>
           Privacy
         </NavLink>
+        <span className="ml-auto hidden font-mono text-[0.625rem] tracking-[0.24em] text-muted-foreground sm:inline">
+          j4ck.ai
+        </span>
       </footer>
 
       <ConsentBanner accepted={accepted} onAgree={() => setAccepted(true)} />
