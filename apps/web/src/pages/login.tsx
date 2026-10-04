@@ -62,10 +62,12 @@ export function LoginPage() {
           <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
             Sign in to Jack AI
           </h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Enter your email. We send a link. If you do not have an account yet,
-            this creates one.
-          </p>
+          {sentTo ? null : (
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Enter your email. We send a link. If you do not have an account
+              yet, this creates one.
+            </p>
+          )}
         </div>
         {sentTo ? (
           <p className="text-sm leading-relaxed">

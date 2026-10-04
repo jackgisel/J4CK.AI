@@ -33,7 +33,7 @@ export function LandingPage() {
   return (
     <div className="flex flex-1 flex-col justify-center gap-16">
       <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16">
-        <div className="flex max-w-xl flex-col gap-6">
+        <div className="flex max-w-xl min-w-0 flex-col gap-6">
           <p className="kicker">The future of agent autonomy</p>
           <h1 className="font-heading text-5xl leading-[0.95] font-semibold tracking-tight md:text-7xl">
             Welcome to
@@ -53,7 +53,9 @@ export function LandingPage() {
             )}
           </div>
         </div>
-        <HeroField className="hidden sm:block" />
+        <div className="min-w-0">
+          <HeroField className="hidden sm:block" />
+        </div>
       </div>
 
       <ul className="grid gap-8 border-t border-border pt-10 sm:grid-cols-2 lg:grid-cols-4">

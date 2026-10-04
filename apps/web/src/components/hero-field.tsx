@@ -5,7 +5,7 @@ export function HeroField({ className }: { className?: string }) {
     <div
       aria-hidden
       className={cn(
-        "relative mx-auto aspect-square w-full max-w-[28rem]",
+        "relative mx-auto aspect-square w-full max-w-[min(28rem,100%)] overflow-hidden",
         className
       )}
     >

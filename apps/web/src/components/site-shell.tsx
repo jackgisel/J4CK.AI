@@ -50,7 +50,7 @@ export function PublicChrome({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-y-auto px-6 py-10 md:px-10">
+      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-6 py-10 md:px-10">
         {children}
       </main>
 
@@ -65,7 +65,7 @@ export function PublicChrome({ children }: { children: ReactNode }) {
         <NavLink to="/privacy" className={navLinkClass}>
           Privacy
         </NavLink>
-        <span className="ml-auto hidden font-mono text-[0.625rem] tracking-[0.24em] text-muted-foreground uppercase sm:inline">
+        <span className="ml-auto hidden font-mono text-[0.625rem] tracking-[0.24em] text-muted-foreground sm:inline">
           j4ck.ai
         </span>
       </footer>
