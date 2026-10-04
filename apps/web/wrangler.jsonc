@@ -14,7 +14,7 @@
   ],
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/agents/*"]
+    "run_worker_first": ["/api/*"]
   },
   "r2_buckets": [
     {
@@ -25,25 +25,6 @@
   "ai": {
     "binding": "AI"
   },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "GuyAgent",
-        "class_name": "GuyAgent"
-      },
-      {
-        "name": "PipelineRunAgent",
-        "class_name": "PipelineRunAgent"
-      }
-    ]
-  },
-  "workflows": [
-    {
-      "name": "j4ck-pipeline",
-      "binding": "PIPELINE_WORKFLOW",
-      "class_name": "PipelineWorkflow"
-    }
-  ],
   "migrations": [
     {
       "tag": "v1",
@@ -52,6 +33,10 @@
     {
       "tag": "v2",
       "new_sqlite_classes": ["PipelineRunAgent"]
+    },
+    {
+      "tag": "v3",
+      "deleted_classes": ["GuyAgent", "PipelineRunAgent"]
     }
   ],
   "d1_databases": [

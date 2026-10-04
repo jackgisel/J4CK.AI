@@ -41,8 +41,8 @@ export function PublicChrome({ children }: { children: ReactNode }) {
         </Link>
         <div className="flex flex-wrap items-center justify-end gap-4">
           {session ? (
-            <NavLink to="/dashboard" className={navLinkClass}>
-              Dashboard
+            <NavLink to="/tasks" className={navLinkClass}>
+              Tasks
             </NavLink>
           ) : (
             <NavLink to="/login" className={navLinkClass}>

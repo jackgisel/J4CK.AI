@@ -31,30 +31,9 @@ The Worker lives in `apps/web/worker`. After changing `wrangler.jsonc`, regenera
 bun run --filter web cf-typegen
 ```
 
-## Mac CLI
+## App
 
-`apps/cli` is a `j4ck` command that runs on your Mac. It signs in through the site, maps a local folder to a guy's `files/` cabinet, and keeps both sides in sync.
-
-```bash
-bun install
-bun run --filter j4ck-cli compile    # writes apps/cli/dist/j4ck
-# copy that binary onto your PATH, then:
-
-j4ck login
-j4ck guys
-j4ck link <guy-name-or-id> ~/Documents/j4ck
-j4ck sync
-j4ck watch
-j4ck service install                 # LaunchAgent so watch starts at login
-```
-
-Without compiling, from the repo:
-
-```bash
-bun run --filter j4ck-cli j4ck -- login
-```
-
-Approve the Mac at `/cli`. Tokens live in `~/.config/j4ck/config.json`. Sync state lives next to that, not inside the folder you linked. `--keep` skips deletions. Default `sync` / `watch` mirrors deletes both ways.
+Signed-in users land on `/tasks`, a flat to-do list. `/lists` holds lists that nest to any depth. Deleting a list deletes everything under it.
 
 ## Auth
 

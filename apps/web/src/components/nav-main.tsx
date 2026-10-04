@@ -1,5 +1,5 @@
 import { Link } from "react-router"
-import { CirclePlusIcon, type LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 
 import {
   SidebarGroup,
@@ -24,23 +24,13 @@ export function NavMain({
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="New guy"
-              className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-              render={<Link to="/contacts/new" />}
-            >
-              <CirclePlusIcon />
-              <span>New guy</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 tooltip={item.title}
-                isActive={navActive(pathname, item.url)}
+                isActive={
+                  pathname === item.url || pathname.startsWith(`${item.url}/`)
+                }
                 render={<Link to={item.url} />}
               >
                 <item.icon />
@@ -52,11 +42,4 @@ export function NavMain({
       </SidebarGroupContent>
     </SidebarGroup>
   )
-}
-
-function navActive(pathname: string, url: string) {
-  if (url === "/dashboard") {
-    return pathname === "/dashboard"
-  }
-  return pathname === url || pathname.startsWith(`${url}/`)
 }

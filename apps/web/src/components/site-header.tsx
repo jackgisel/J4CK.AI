@@ -3,11 +3,9 @@ import { useLocation } from "react-router"
 import { Separator } from "@workspace/ui/components/separator"
 import { SidebarTrigger } from "@workspace/ui/components/sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useThreadTitle } from "@/components/thread-title"
 
 export function SiteHeader() {
   const { pathname } = useLocation()
-  const threadTitle = useThreadTitle()
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -18,7 +16,7 @@ export function SiteHeader() {
           className="mx-2 h-4 data-vertical:self-auto"
         />
         <h1 className="truncate text-base font-medium">
-          {headerTitle(pathname, threadTitle)}
+          {headerTitle(pathname)}
         </h1>
         <div className="ml-auto">
           <ThemeToggle />
@@ -28,27 +26,9 @@ export function SiteHeader() {
   )
 }
 
-function headerTitle(pathname: string, threadTitle: string | null) {
-  if (/^\/messages\/[^/]+$/.test(pathname)) {
-    return threadTitle ?? "Messages"
+function headerTitle(pathname: string) {
+  if (pathname.startsWith("/lists")) {
+    return "Lists"
   }
-  if (/^\/workflows\/[^/]+\/runs\/[^/]+$/.test(pathname)) {
-    return "Run"
-  }
-  if (pathname.startsWith("/workflows")) {
-    return "Workflows"
-  }
-  if (pathname.startsWith("/studio")) {
-    return "Studio"
-  }
-  if (pathname.startsWith("/cli")) {
-    return "Mac"
-  }
-  if (pathname.startsWith("/contacts")) {
-    return "Contacts"
-  }
-  if (pathname.startsWith("/messages")) {
-    return "Messages"
-  }
-  return "Dashboard"
+  return "Tasks"
 }

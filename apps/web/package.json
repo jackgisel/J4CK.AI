@@ -15,22 +15,18 @@
     "cf-typegen": "wrangler types",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply j4ck-ai --local",
-    "db:migrate:remote": "wrangler d1 migrations apply j4ck-ai --remote",
-    "sync": "bun ./scripts/sync-home.ts"
+    "db:migrate:remote": "wrangler d1 migrations apply j4ck-ai --remote"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.1",
     "@workspace/ui": "workspace:*",
-    "@xyflow/react": "^12.11.6",
-    "agents": "^0.21.0",
     "better-auth": "^1.7.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.13.3",
     "lucide-react": "^1.33.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-router": "^8.3.0",
-    "recharts": "3.8.0"
+    "react-router": "^8.3.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.53.1",

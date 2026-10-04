@@ -1,13 +1,6 @@
 import type { ComponentProps } from "react"
 import { Link, useLocation } from "react-router"
-import {
-  LaptopIcon,
-  LayoutDashboardIcon,
-  MessageSquareIcon,
-  SparklesIcon,
-  UsersIcon,
-  WorkflowIcon,
-} from "lucide-react"
+import { ListTreeIcon, SquareCheckIcon } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -25,34 +18,14 @@ import { authClient } from "@/lib/auth-client"
 
 const navMain = [
   {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboardIcon,
+    title: "Tasks",
+    url: "/tasks",
+    icon: SquareCheckIcon,
   },
   {
-    title: "Contacts",
-    url: "/contacts",
-    icon: UsersIcon,
-  },
-  {
-    title: "Messages",
-    url: "/messages",
-    icon: MessageSquareIcon,
-  },
-  {
-    title: "Studio",
-    url: "/studio",
-    icon: SparklesIcon,
-  },
-  {
-    title: "Workflows",
-    url: "/workflows",
-    icon: WorkflowIcon,
-  },
-  {
-    title: "Mac",
-    url: "/cli",
-    icon: LaptopIcon,
+    title: "Lists",
+    url: "/lists",
+    icon: ListTreeIcon,
   },
 ]
 
@@ -68,7 +41,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<Link to="/dashboard" />}
+              render={<Link to="/tasks" />}
             >
               <span className="font-heading text-base font-semibold tracking-wider uppercase">
                 j4ck.ai
