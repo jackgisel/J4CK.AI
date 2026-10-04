@@ -15,7 +15,7 @@ function ThemedToaster() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="dark">
       <TooltipProvider>
         <ThemedToaster />
         <BrowserRouter>

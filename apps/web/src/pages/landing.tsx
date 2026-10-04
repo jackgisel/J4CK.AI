@@ -1,136 +1,73 @@
-import { useEffect, useState } from "react"
 import { Link } from "react-router"
 
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
+import { HeroField } from "@/components/hero-field"
+import { SystemStatus } from "@/components/system-status"
+import { useSystemStatus } from "@/hooks/use-system-status"
 import { authClient } from "@/lib/auth-client"
 
-type Health = "checking" | "ok" | "down"
-
-type ServiceStatus =
-  { state: "checking" } | { state: "ok"; detail?: string } | { state: "down" }
+const capabilities = [
+  {
+    label: "Agents",
+    copy: "Invent people. Give them a face, a cabinet, a job.",
+  },
+  {
+    label: "Workflows",
+    copy: "Boards, loops, and models working in concert.",
+  },
+  {
+    label: "Studio",
+    copy: "Prompt a picture. Keep the thread. Run locally.",
+  },
+  {
+    label: "Field kit",
+    copy: "A Mac CLI that keeps their files in sync.",
+  },
+]
 
 export function LandingPage() {
   const { data: session, isPending } = authClient.useSession()
-  const [health, setHealth] = useState<Health>("checking")
-  const [db, setDb] = useState<Health>("checking")
-  const [r2, setR2] = useState<ServiceStatus>({ state: "checking" })
-
-  useEffect(() => {
-    fetch("/api/health")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("health check failed")
-        }
-        return response.json() as Promise<{ ok: boolean; db: boolean }>
-      })
-      .then((data) => {
-        setHealth(data.ok ? "ok" : "down")
-        setDb(data.db ? "ok" : "down")
-      })
-      .catch(() => {
-        setHealth("down")
-        setDb("down")
-      })
-
-    fetch("/api/r2")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("r2 list failed")
-        }
-        return response.json() as Promise<{ objects: unknown[] }>
-      })
-      .then((data) => {
-        setR2({
-          state: "ok",
-          detail: `${data.objects.length} object${data.objects.length === 1 ? "" : "s"}`,
-        })
-      })
-      .catch(() => {
-        setR2({ state: "down" })
-      })
-  }, [])
+  const status = useSystemStatus()
+  const signedIn = Boolean(session)
 
   return (
-    <div className="flex flex-1 flex-col justify-center gap-10">
-      <div className="flex max-w-xl flex-col gap-4">
-        <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-6xl">
-          Jack Gisel
-        </h1>
-        <p className="max-w-md text-base leading-relaxed text-muted-foreground">
-          Invent people. Give them a brick head and a backstory. Then text
-          them.
-        </p>
-        <p className="text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
-          Worker, D1, R2
-        </p>
-        <div>
-          {isPending ? (
-            <Button disabled>Log in</Button>
-          ) : (
-            <Button render={<Link to={session ? "/dashboard" : "/login"} />}>
-              {session ? "Open dashboard" : "Log in"}
-            </Button>
-          )}
+    <div className="flex flex-1 flex-col justify-center gap-16">
+      <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16">
+        <div className="flex max-w-xl flex-col gap-6">
+          <p className="kicker">The future of agent autonomy</p>
+          <h1 className="font-heading text-5xl leading-[0.95] font-semibold tracking-tight md:text-7xl">
+            Welcome to
+            <span className="block">Jack AI</span>
+          </h1>
+          <p className="max-w-md text-base leading-relaxed text-muted-foreground md:text-lg">
+            A private studio for agents you invent. They remember, they write
+            back, and they work on your terms.
+          </p>
+          <div>
+            {isPending ? (
+              <Button disabled>Enter</Button>
+            ) : (
+              <Button render={<Link to={signedIn ? "/dashboard" : "/login"} />}>
+                {signedIn ? "Open studio" : "Enter"}
+              </Button>
+            )}
+          </div>
         </div>
+        <HeroField className="hidden sm:block" />
       </div>
 
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle>Status</CardTitle>
-          <CardDescription>
-            Live reads from the Worker. Press D to flip the theme.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <dl className="flex flex-col gap-4">
-            <StatusRow label="API" value={health} />
-            <StatusRow label="D1" value={db} />
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-muted-foreground">R2</dt>
-              <dd>
-                {r2.state === "ok" ? (
-                  <Badge>{r2.detail}</Badge>
-                ) : (
-                  <StatusBadge
-                    value={r2.state === "checking" ? "checking" : "down"}
-                  />
-                )}
-              </dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
+      <ul className="grid gap-8 border-t border-border pt-10 sm:grid-cols-2 lg:grid-cols-4">
+        {capabilities.map((item) => (
+          <li key={item.label} className="flex flex-col gap-2">
+            <p className="kicker text-foreground">{item.label}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {item.copy}
+            </p>
+          </li>
+        ))}
+      </ul>
+
+      <SystemStatus {...status} />
     </div>
   )
-}
-
-function StatusRow({ label, value }: { label: string; value: Health }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>
-        <StatusBadge value={value} />
-      </dd>
-    </div>
-  )
-}
-
-function StatusBadge({ value }: { value: Health }) {
-  if (value === "checking") {
-    return <Badge variant="secondary">Checking</Badge>
-  }
-
-  if (value === "ok") {
-    return <Badge>Up</Badge>
-  }
-
-  return <Badge variant="destructive">Down</Badge>
 }

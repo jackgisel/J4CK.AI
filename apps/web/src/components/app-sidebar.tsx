@@ -9,6 +9,7 @@ import {
   WorkflowIcon,
 } from "lucide-react"
 
+import { BrandLockup } from "@/components/brand-mark"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
@@ -67,12 +68,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              className="h-auto data-[slot=sidebar-menu-button]:p-1.5!"
               render={<Link to="/dashboard" />}
             >
-              <span className="font-heading text-base font-semibold tracking-wider uppercase">
-                j4ck.ai
-              </span>
+              <BrandLockup />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
