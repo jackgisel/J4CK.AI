@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 
 import { createAuth } from "./auth"
+import { cards } from "./cards"
 import { lists } from "./lists"
 import { tasks } from "./tasks"
 
@@ -19,7 +20,10 @@ app.get("/api/health", async (c) => {
   }
 })
 
+app.route("/api/cards", cards)
 app.route("/api/tasks", tasks)
 app.route("/api/lists", lists)
+
+export { CardResearchWorkflow } from "./card-research"
 
 export default app

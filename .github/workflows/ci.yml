@@ -41,6 +41,10 @@ jobs:
       - name: Build
         run: bun run --filter web build
 
+      - name: Dry-run deploy
+        working-directory: apps/web
+        run: bunx wrangler deploy --dry-run
+
   deploy:
     needs: check
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router"
 
 import { AppShell } from "@/components/app-shell"
 import { SiteShell } from "@/components/site-shell"
+import { BoardPage } from "@/pages/board"
 import { LandingPage } from "@/pages/landing"
 import { ListsPage } from "@/pages/lists"
 import { LoginPage } from "@/pages/login"
@@ -20,6 +21,7 @@ export function App() {
         <Route path="/privacy" element={<PrivacyPage />} />
       </Route>
       <Route element={<AppShell />}>
+        <Route path="/board" element={<BoardPage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/lists" element={<ListsPage />} />
       </Route>

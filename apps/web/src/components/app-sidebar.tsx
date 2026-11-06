@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react"
 import { Link, useLocation } from "react-router"
-import { ListTreeIcon, SquareCheckIcon } from "lucide-react"
+import { KanbanIcon, ListTreeIcon, SquareCheckIcon } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -17,6 +17,11 @@ import {
 import { authClient } from "@/lib/auth-client"
 
 const navMain = [
+  {
+    title: "Board",
+    url: "/board",
+    icon: KanbanIcon,
+  },
   {
     title: "Tasks",
     url: "/tasks",
@@ -41,7 +46,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<Link to="/tasks" />}
+              render={<Link to="/board" />}
             >
               <span className="font-heading text-base font-semibold tracking-wider uppercase">
                 j4ck.ai

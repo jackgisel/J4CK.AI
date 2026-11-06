@@ -38,7 +38,15 @@ bun run --filter web cf-typegen
 
 ## App
 
-`/` is a public landing page with no link to sign in. `/login` still works by direct URL. Signed-in users land on `/tasks`, a flat to-do list. `/lists` holds lists that nest to any depth. Deleting a list deletes everything under it.
+`/` is a public landing page with no link to sign in. `/login` still works by direct URL. Signed-in users land on `/board`. `/tasks` is a flat to-do list. `/lists` holds lists that nest to any depth. Deleting a list deletes everything under it.
+
+## Board
+
+`/board` turns a spoken note into a card. Whisper runs in a Web Worker through Transformers.js, so audio stays in the browser. Only the text you save reaches the Worker.
+
+Moving a card from Idea to Researching starts `CardResearchWorkflow`. One agent writes a plan, a second estimates its tokens, and the Worker prices those tokens against live OpenRouter rates. The card then waits in Needs approval. Approving marks it Approved. Nothing runs the work yet.
+
+The Worker needs `OPENROUTER_API_KEY`, set with `wrangler secret put` and in `.dev.vars` locally.
 
 ## Auth
 

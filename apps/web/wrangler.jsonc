@@ -36,6 +36,13 @@
       "deleted_classes": ["GuyAgent", "PipelineRunAgent"]
     }
   ],
+  "workflows": [
+    {
+      "name": "j4ck-card-research",
+      "binding": "CARD_RESEARCH",
+      "class_name": "CardResearchWorkflow"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
