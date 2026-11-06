@@ -87,7 +87,9 @@ lists.patch("/:id", async (c) => {
   const [updated] = await db
     .update(list)
     .set({ name, updatedAt: new Date() })
-    .where(and(eq(list.id, c.req.param("id")), eq(list.userId, c.get("userId"))))
+    .where(
+      and(eq(list.id, c.req.param("id")), eq(list.userId, c.get("userId")))
+    )
     .returning()
 
   if (!updated) {
@@ -101,7 +103,9 @@ lists.delete("/:id", async (c) => {
   const db = createDb(c.env.DB)
   const [deleted] = await db
     .delete(list)
-    .where(and(eq(list.id, c.req.param("id")), eq(list.userId, c.get("userId"))))
+    .where(
+      and(eq(list.id, c.req.param("id")), eq(list.userId, c.get("userId")))
+    )
     .returning({ id: list.id })
 
   if (!deleted) {

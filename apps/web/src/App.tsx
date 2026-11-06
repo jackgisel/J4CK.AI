@@ -1,8 +1,8 @@
-import { Navigate, Route, Routes } from "react-router"
+import { Route, Routes } from "react-router"
 
 import { AppShell } from "@/components/app-shell"
-import { PublicChrome, SiteShell } from "@/components/site-shell"
-import { authClient } from "@/lib/auth-client"
+import { SiteShell } from "@/components/site-shell"
+import { LandingPage } from "@/pages/landing"
 import { ListsPage } from "@/pages/lists"
 import { LoginPage } from "@/pages/login"
 import { NotFoundPage } from "@/pages/not-found"
@@ -13,7 +13,7 @@ import { TosPage } from "@/pages/tos"
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<RootRedirect />} />
+      <Route path="/" element={<LandingPage />} />
       <Route element={<SiteShell />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/tos" element={<TosPage />} />
@@ -28,20 +28,4 @@ export function App() {
       </Route>
     </Routes>
   )
-}
-
-function RootRedirect() {
-  const { data: session, isPending } = authClient.useSession()
-
-  if (isPending) {
-    return (
-      <PublicChrome>
-        <p className="flex flex-1 items-center text-sm text-muted-foreground">
-          Loading…
-        </p>
-      </PublicChrome>
-    )
-  }
-
-  return <Navigate to={session ? "/tasks" : "/login"} replace />
 }

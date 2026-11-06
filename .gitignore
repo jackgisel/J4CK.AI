@@ -37,3 +37,6 @@ dist-ssr
 
 # typescript
 *.tsbuildinfo
+
+# playwright mcp
+.playwright-mcp

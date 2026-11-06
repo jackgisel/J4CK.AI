@@ -1,12 +1,8 @@
 import { useState, type ReactNode } from "react"
 import { Link, NavLink, Outlet } from "react-router"
 
-import {
-  ConsentBanner,
-  hasAcceptedConsent,
-} from "@/components/consent-banner"
+import { ConsentBanner, hasAcceptedConsent } from "@/components/consent-banner"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { authClient } from "@/lib/auth-client"
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `text-[0.625rem] font-semibold tracking-widest uppercase ${
@@ -22,7 +18,6 @@ export function SiteShell() {
 }
 
 export function PublicChrome({ children }: { children: ReactNode }) {
-  const { data: session } = authClient.useSession()
   const [accepted, setAccepted] = useState(hasAcceptedConsent)
 
   return (
@@ -40,15 +35,6 @@ export function PublicChrome({ children }: { children: ReactNode }) {
           j4ck.ai
         </Link>
         <div className="flex flex-wrap items-center justify-end gap-4">
-          {session ? (
-            <NavLink to="/tasks" className={navLinkClass}>
-              Tasks
-            </NavLink>
-          ) : (
-            <NavLink to="/login" className={navLinkClass}>
-              Log in
-            </NavLink>
-          )}
           <ThemeToggle />
         </div>
       </header>

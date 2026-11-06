@@ -92,7 +92,9 @@ tasks.patch("/:id", async (c) => {
   const [updated] = await db
     .update(task)
     .set(patch)
-    .where(and(eq(task.id, c.req.param("id")), eq(task.userId, c.get("userId"))))
+    .where(
+      and(eq(task.id, c.req.param("id")), eq(task.userId, c.get("userId")))
+    )
     .returning()
 
   if (!updated) {
@@ -106,7 +108,9 @@ tasks.delete("/:id", async (c) => {
   const db = createDb(c.env.DB)
   const [deleted] = await db
     .delete(task)
-    .where(and(eq(task.id, c.req.param("id")), eq(task.userId, c.get("userId"))))
+    .where(
+      and(eq(task.id, c.req.param("id")), eq(task.userId, c.get("userId")))
+    )
     .returning({ id: task.id })
 
   if (!deleted) {

@@ -22,17 +22,4 @@ app.get("/api/health", async (c) => {
 app.route("/api/tasks", tasks)
 app.route("/api/lists", lists)
 
-app.get("/api/r2", async (c) => {
-  const listed = await c.env.BUCKET.list({ limit: 20 })
-
-  return c.json({
-    objects: listed.objects.map((object) => ({
-      key: object.key,
-      size: object.size,
-      uploaded: object.uploaded,
-    })),
-    truncated: listed.truncated,
-  })
-})
-
 export default app

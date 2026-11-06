@@ -5,10 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { ConsentBanner } from "@/components/consent-banner"
 import { RequireSession } from "@/components/require-session"
 import { SiteHeader } from "@/components/site-header"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@workspace/ui/components/sidebar"
+import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 
 export function AppShell() {
   return (
