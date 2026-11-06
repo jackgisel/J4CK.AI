@@ -27,6 +27,9 @@ export function SiteHeader() {
 }
 
 function headerTitle(pathname: string) {
+  if (pathname.startsWith("/board")) {
+    return "Board"
+  }
   if (pathname.startsWith("/lists")) {
     return "Lists"
   }
