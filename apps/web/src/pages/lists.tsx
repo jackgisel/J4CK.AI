@@ -150,7 +150,9 @@ export function ListsPage() {
       ) : null}
 
       {rows === null ? (
-        error ? null : <p className="text-sm text-muted-foreground">Loading…</p>
+        error ? null : (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        )
       ) : tree.length === 0 ? (
         <p className="text-sm text-muted-foreground">No lists yet.</p>
       ) : (

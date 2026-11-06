@@ -110,7 +110,9 @@ export function TasksPage() {
       ) : null}
 
       {tasks === null ? (
-        error ? null : <p className="text-sm text-muted-foreground">Loading…</p>
+        error ? null : (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        )
       ) : (
         <>
           {open.length === 0 ? (

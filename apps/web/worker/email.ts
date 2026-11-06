@@ -26,11 +26,7 @@ function emailErrorMessage(error: unknown) {
   return "Could not send the email."
 }
 
-export async function sendMagicLinkEmail(
-  env: Env,
-  email: string,
-  url: string
-) {
+export async function sendMagicLinkEmail(env: Env, email: string, url: string) {
   console.info(`[magic-link] ${email}\n${url}`)
 
   try {

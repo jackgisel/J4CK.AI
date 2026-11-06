@@ -8,8 +8,8 @@ const COLOR_SCHEME_QUERY = "(prefers-color-scheme: dark)"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  const [systemDark, setSystemDark] = React.useState(() =>
-    window.matchMedia(COLOR_SCHEME_QUERY).matches
+  const [systemDark, setSystemDark] = React.useState(
+    () => window.matchMedia(COLOR_SCHEME_QUERY).matches
   )
 
   React.useEffect(() => {
