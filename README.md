@@ -50,6 +50,8 @@ The Worker needs `OPENROUTER_API_KEY`, set with `wrangler secret put` and in `.d
 
 ## Auth
 
+Sign-up is closed, so magic links only reach existing accounts. Set `ALLOW_SIGN_UP` to `true` on the Worker to let a new person in, then remove it. Everything behind login can spend OpenRouter credits.
+
 `BETTER_AUTH_SECRET` lives in `apps/web/wrangler.jsonc`. Locally, magic links are simulated: the Worker logs the URL and writes the message to a file. After deploy, `env.EMAIL.send()` delivers through Cloudflare Email Service from `noreply@j4ck.ai`.
 
 Onboard `j4ck.ai` in the Cloudflare dashboard under Email Service and add the SPF/DKIM records before production mail will send.

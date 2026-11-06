@@ -16,6 +16,7 @@ export default defineConfig(async () => {
           bindings: {
             TEST_MIGRATIONS: migrations,
             OPENROUTER_API_KEY: "test-key",
+            ALLOW_SIGN_UP: "true",
           },
         },
       }),

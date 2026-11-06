@@ -184,6 +184,30 @@ describe("moving a card", () => {
     )
   })
 
+  test("a failed run keeps the cost of the calls that succeeded", async () => {
+    fakeOpenRouter({ failing: ["tokens"] })
+    await using workflows = await introspectWorkflow(env.CARD_RESEARCH)
+    await workflows.modifyAll(async (step) => {
+      await step.disableRetryDelays()
+    })
+    const cookie = await signIn("failed-spend@example.com")
+    const card = await createCard(cookie)
+
+    await move(card.id, "researching", cookie)
+
+    await vi.waitFor(
+      async () => {
+        expect(await readCard(card.id, cookie)).toMatchObject({
+          status: "idea",
+          error: expect.stringContaining("No credits"),
+        })
+      },
+      { timeout: 4000, interval: 25 }
+    )
+    // The title and the plan each cost $0.01. The token call failed.
+    expect((await readCard(card.id, cookie)).spentUsd).toBeCloseTo(0.02)
+  })
+
   test.each(["approval", "approved", "nonsense"])(
     "an idea cannot jump to %s",
     async (status) => {
