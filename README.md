@@ -9,7 +9,12 @@ bun install
 bun dev
 bun run build
 bun run deploy
+bun run lint                 # Biome, the same check CI runs
+bun run format               # Biome, with fixes
+bun run --filter web test    # Vitest inside the Workers runtime
 ```
+
+Pull requests must pass lint, typecheck, tests and build. A merge to `main` runs the same checks, applies D1 migrations and deploys the Worker. The `CLOUDFLARE_API_TOKEN` repo secret needs Workers Scripts and D1 edit access.
 
 From `apps/web`:
 
@@ -33,7 +38,7 @@ bun run --filter web cf-typegen
 
 ## App
 
-Signed-in users land on `/tasks`, a flat to-do list. `/lists` holds lists that nest to any depth. Deleting a list deletes everything under it.
+`/` is a public landing page with no link to sign in. `/login` still works by direct URL. Signed-in users land on `/tasks`, a flat to-do list. `/lists` holds lists that nest to any depth. Deleting a list deletes everything under it.
 
 ## Auth
 
