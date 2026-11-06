@@ -152,9 +152,14 @@ export async function completeText(
       model: request.model,
       max_tokens: request.maxTokens,
       messages: request.messages,
-      provider: request.provider
-        ? { order: [request.provider] }
-        : { sort: "price" },
+      // Without require_parameters a fallback could drop the search tool, and
+      // the model would answer from memory with nothing to show for it.
+      provider: {
+        ...(request.provider
+          ? { order: [request.provider] }
+          : { sort: "price" }),
+        require_parameters: true,
+      },
       ...(request.searches > 0
         ? {
             tools: [

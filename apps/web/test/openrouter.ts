@@ -43,7 +43,7 @@ type RunReply = {
 
 type RunCall = {
   messages: Array<{ role: string; content: string }>
-  provider: { sort?: string; order?: string[] }
+  provider: { sort?: string; order?: string[]; require_parameters?: boolean }
   tools?: unknown[]
 }
 

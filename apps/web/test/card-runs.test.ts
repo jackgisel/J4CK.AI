@@ -92,8 +92,14 @@ describe("running a card", () => {
     expect(first?.messages.at(-1)?.content).toContain("book a venue")
     expect(second?.messages.at(-2)?.content).toBe("Output of call 1")
     expect(second?.messages.at(-1)?.content).toContain("Step 2 of 3: Compare")
-    expect(first?.provider).toEqual({ sort: "price" })
-    expect(second?.provider).toEqual({ order: ["Relace"] })
+    expect(first?.provider).toEqual({
+      sort: "price",
+      require_parameters: true,
+    })
+    expect(second?.provider).toEqual({
+      order: ["Relace"],
+      require_parameters: true,
+    })
     expect(first?.tools).toHaveLength(1)
     // The write-up works from notes, so it has no reason to pay for a search.
     expect(final?.tools).toBeUndefined()

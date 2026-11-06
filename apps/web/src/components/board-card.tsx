@@ -147,8 +147,8 @@ function Proposal({
       {card.status === "approval" || card.status === "approved" ? (
         <p className="text-xs text-muted-foreground">
           Runs on {modelName(card.runLimit.model)} and stops at{" "}
-          {formatUsd(card.runLimit.budgetUsd)}. Web searches cost extra and are
-          not in this estimate.
+          {formatUsd(card.runLimit.budgetUsd)}. This estimate leaves out web
+          searches and the pages they add, so a run can cost far more.
         </p>
       ) : null}
 
