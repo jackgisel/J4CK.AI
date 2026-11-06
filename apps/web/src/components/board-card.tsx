@@ -1,11 +1,14 @@
 import { LoaderCircleIcon, Trash2Icon } from "lucide-react"
 
+import { RunResult } from "@/components/run-result"
 import { Button } from "@workspace/ui/components/button"
 import {
   type Card as BoardCardData,
   type CardStatus,
+  formatDuration,
   formatUsd,
   modelName,
+  type Run,
 } from "@/lib/cards"
 
 export function BoardCard({
@@ -18,6 +21,7 @@ export function BoardCard({
   onDelete: (card: BoardCardData) => void
 }) {
   const draggable = card.status === "idea"
+  const working = card.status === "researching" || card.status === "running"
 
   return (
     <article
@@ -29,9 +33,9 @@ export function BoardCard({
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-medium text-pretty">{card.title}</h3>
-        {card.status === "researching" ? (
+        {working ? (
           <LoaderCircleIcon
-            aria-label="Agents are researching"
+            aria-label="Agents are working"
             className="size-4 shrink-0 animate-spin text-muted-foreground"
           />
         ) : (
@@ -65,7 +69,12 @@ export function BoardCard({
         </Button>
       ) : null}
 
-      {card.plan && card.estimate ? (
+      {card.status === "running" ? <Progress card={card} /> : null}
+      {card.run && card.status !== "running" ? (
+        <RunReport card={card} run={card.run} />
+      ) : null}
+
+      {card.plan && card.estimate && card.status !== "done" ? (
         <Proposal card={card} onMove={onMove} />
       ) : null}
     </article>
@@ -86,7 +95,9 @@ function Proposal({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground">{plan.summary}</p>
+      {card.status === "approval" ? (
+        <p className="text-muted-foreground">{plan.summary}</p>
+      ) : null}
       <details className="text-xs">
         <summary className="cursor-pointer font-medium">
           {plan.steps.length} steps
@@ -133,15 +144,23 @@ function Proposal({
         {formatUsd(card.spentUsd)}.
       </p>
 
+      {card.status === "approval" || card.status === "approved" ? (
+        <p className="text-xs text-muted-foreground">
+          Runs on {modelName(card.runLimit.model)} and stops at{" "}
+          {formatUsd(card.runLimit.budgetUsd)}. Web searches cost extra and are
+          not in this estimate.
+        </p>
+      ) : null}
+
       {card.status === "approval" ? (
         <div className="flex gap-2">
           <Button
             className="flex-1"
-            onClick={() => onMove(card, "approved")}
+            onClick={() => onMove(card, "running")}
             size="sm"
             type="button"
           >
-            Approve
+            Approve and run
           </Button>
           <Button
             onClick={() => onMove(card, "idea")}
@@ -153,6 +172,73 @@ function Proposal({
           </Button>
         </div>
       ) : null}
+
+      {card.status === "approved" ? (
+        <Button onClick={() => onMove(card, "running")} size="sm" type="button">
+          {card.run ? "Run again" : "Run"}
+        </Button>
+      ) : null}
     </div>
+  )
+}
+
+function Progress({ card }: { card: BoardCardData }) {
+  const { run, runLimit } = card
+  if (!run) {
+    return <p className="text-xs text-muted-foreground">Starting</p>
+  }
+
+  return (
+    <p className="text-xs text-muted-foreground tabular-nums">
+      Step {Math.min(run.stepsDone + 1, run.stepCount)} of {run.stepCount}.{" "}
+      {formatUsd(run.costUsd)} of {formatUsd(runLimit.budgetUsd)} spent.
+    </p>
+  )
+}
+
+function RunReport({ card, run }: { card: BoardCardData; run: Run }) {
+  const tokenUsd = run.costUsd - run.searchUsd
+
+  return (
+    <div className="flex flex-col gap-3">
+      <table className="w-full text-xs tabular-nums">
+        <caption className="pb-1 text-left text-muted-foreground">
+          {run.status === "finished" ? "Finished" : "Stopped"} in{" "}
+          {formatDuration(run.startedAt, run.finishedAt ?? run.startedAt)} on{" "}
+          {modelName(run.model)}
+        </caption>
+        <tbody>
+          <RunRow label="Tokens" value={formatUsd(tokenUsd)} />
+          <RunRow label="Web search" value={formatUsd(run.searchUsd)} />
+          <RunRow label="This run" value={formatUsd(run.costUsd)} />
+          {run.estimateUsd === null ? null : (
+            <RunRow label="Estimated" value={formatUsd(run.estimateUsd)} />
+          )}
+          <RunRow
+            label="Whole card"
+            value={formatUsd(card.spentUsd + card.runSpentUsd)}
+          />
+        </tbody>
+      </table>
+      <p className="text-xs text-muted-foreground tabular-nums">
+        {run.turns} turns, {run.retries} retries.{" "}
+        {run.inputTokens.toLocaleString()} in (
+        {run.cachedTokens.toLocaleString()} cached),{" "}
+        {run.outputTokens.toLocaleString()} out (
+        {run.reasoningTokens.toLocaleString()} reasoning).
+      </p>
+      {run.result ? <RunResult run={run} title={card.title} /> : null}
+    </div>
+  )
+}
+
+function RunRow({ label, value }: { label: string; value: string }) {
+  return (
+    <tr className="border-t">
+      <th className="py-1 pr-2 text-left font-normal" scope="row">
+        {label}
+      </th>
+      <td className="py-1 text-right whitespace-nowrap">{value}</td>
+    </tr>
   )
 }
