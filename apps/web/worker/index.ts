@@ -25,5 +25,6 @@ app.route("/api/tasks", tasks)
 app.route("/api/lists", lists)
 
 export { CardResearchWorkflow } from "./card-research"
+export { CardRunWorkflow } from "./card-run"
 
 export default app

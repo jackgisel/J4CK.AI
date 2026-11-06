@@ -2,65 +2,19 @@ import { introspectWorkflow } from "cloudflare:test"
 import { env } from "cloudflare:workers"
 import { afterEach, describe, expect, test, vi } from "vitest"
 
-import { json, request, signIn } from "./helpers"
+import {
+  createCard,
+  json,
+  move,
+  readCard,
+  signIn,
+  waitForStatus,
+} from "./helpers"
 import { fakeOpenRouter, PLAN } from "./openrouter"
-
-type Card = {
-  id: string
-  title: string
-  status: string
-  spentUsd: number
-  error: string | null
-  plan: unknown
-  estimate: { inputTokens: number; models: Array<{ usd: number }> } | null
-  approvedAt: string | null
-}
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
-
-async function createCard(cookie: { Cookie: string }) {
-  const response = await json(
-    "/api/cards",
-    { transcript: "um book a venue for the offsite" },
-    { headers: cookie }
-  )
-  expect(response.status).toBe(201)
-  return ((await response.json()) as { card: Card }).card
-}
-
-function move(id: string, status: string, cookie: { Cookie: string }) {
-  return request(`/api/cards/${id}`, {
-    method: "PATCH",
-    headers: { ...cookie, "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
-  })
-}
-
-async function readCard(id: string, cookie: { Cookie: string }) {
-  const response = await request("/api/cards", { headers: cookie })
-  const { cards } = (await response.json()) as { cards: Card[] }
-  const card = cards.find((item) => item.id === id)
-  if (!card) {
-    throw new Error("Card is gone")
-  }
-  return card
-}
-
-async function waitForStatus(
-  id: string,
-  status: string,
-  cookie: { Cookie: string }
-) {
-  await vi.waitFor(
-    async () => {
-      expect((await readCard(id, cookie)).status).toBe(status)
-    },
-    { timeout: 4000, interval: 25 }
-  )
-  return readCard(id, cookie)
-}
 
 describe("creating a card", () => {
   test("needs a session", async () => {
@@ -125,7 +79,7 @@ describe("moving a card", () => {
     expect(done.spentUsd).toBeCloseTo(0.03)
   })
 
-  test("approval is the only way out of the approval column forward", async () => {
+  test("a card cannot be marked approved without running", async () => {
     fakeOpenRouter()
     const cookie = await signIn("approve@example.com")
     const card = await createCard(cookie)
@@ -134,10 +88,8 @@ describe("moving a card", () => {
 
     const approved = await move(card.id, "approved", cookie)
 
-    expect(approved.status).toBe(200)
-    const saved = await readCard(card.id, cookie)
-    expect(saved.status).toBe("approved")
-    expect(saved.approvedAt).not.toBeNull()
+    expect(approved.status).toBe(409)
+    expect((await readCard(card.id, cookie)).status).toBe("approval")
   })
 
   test("rejecting sends the card back and clears the plan", async () => {
@@ -208,7 +160,7 @@ describe("moving a card", () => {
     expect((await readCard(card.id, cookie)).spentUsd).toBeCloseTo(0.02)
   })
 
-  test.each(["approval", "approved", "nonsense"])(
+  test.each(["approval", "approved", "running", "done", "nonsense"])(
     "an idea cannot jump to %s",
     async (status) => {
       fakeOpenRouter()
