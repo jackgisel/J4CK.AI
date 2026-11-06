@@ -102,8 +102,8 @@ export class CardResearchWorkflow extends WorkflowEntrypoint<
         return
       }
 
-      const research = await step.do("research", STEP_CONFIG, () =>
-        completeJson<Plan>(this.env, {
+      const plan = await step.do("research", STEP_CONFIG, async () => {
+        const { value, costUsd } = await completeJson<Plan>(this.env, {
           model: RESEARCH_MODEL,
           name: "plan",
           system: RESEARCH_SYSTEM,
@@ -111,18 +111,25 @@ export class CardResearchWorkflow extends WorkflowEntrypoint<
           schema: PLAN_SCHEMA,
           maxTokens: RESEARCH_TOKENS,
         })
-      )
+        await addSpend(this.env, cardId, costUsd)
+        return value
+      })
 
-      const tokens = await step.do("estimate tokens", STEP_CONFIG, () =>
-        completeJson<{ steps: StepTokens[] }>(this.env, {
-          model: RESEARCH_MODEL,
-          name: "tokens",
-          system: ESTIMATE_SYSTEM,
-          prompt: JSON.stringify(research.value),
-          schema: TOKENS_SCHEMA,
-          maxTokens: ESTIMATE_TOKENS,
-        })
-      )
+      const tokens = await step.do("estimate tokens", STEP_CONFIG, async () => {
+        const { value, costUsd } = await completeJson<{ steps: StepTokens[] }>(
+          this.env,
+          {
+            model: RESEARCH_MODEL,
+            name: "tokens",
+            system: ESTIMATE_SYSTEM,
+            prompt: JSON.stringify(plan),
+            schema: TOKENS_SCHEMA,
+            maxTokens: ESTIMATE_TOKENS,
+          }
+        )
+        await addSpend(this.env, cardId, costUsd)
+        return value.steps
+      })
 
       const prices = await step.do("read prices", STEP_CONFIG, async () => {
         const response = await fetch(MODELS_URL)
@@ -136,14 +143,13 @@ export class CardResearchWorkflow extends WorkflowEntrypoint<
       }
 
       await step.do("ask for approval", async () => {
-        const estimate = priceEstimate(tokens.value.steps, prices)
+        const estimate = priceEstimate(tokens, prices)
         await createDb(this.env.DB)
           .update(card)
           .set({
             status: "approval",
-            plan: JSON.stringify(research.value),
+            plan: JSON.stringify(plan),
             estimate: JSON.stringify(estimate),
-            spentUsd: sql`${card.spentUsd} + ${research.costUsd + tokens.costUsd}`,
             updatedAt: new Date(),
           })
           .where(and(eq(card.id, cardId), eq(card.status, "researching")))
@@ -158,4 +164,12 @@ export class CardResearchWorkflow extends WorkflowEntrypoint<
       })
     }
   }
+}
+
+// Saved as each call finishes, so a run that fails later still shows its cost.
+async function addSpend(env: Env, cardId: string, costUsd: number) {
+  await createDb(env.DB)
+    .update(card)
+    .set({ spentUsd: sql`${card.spentUsd} + ${costUsd}` })
+    .where(eq(card.id, cardId))
 }
