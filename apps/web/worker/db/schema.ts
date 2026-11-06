@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm"
 import {
   index,
   integer,
+  real,
   sqliteTable,
   text,
   type AnySQLiteColumn,
@@ -111,11 +112,37 @@ export const list = sqliteTable(
   ]
 )
 
+export const card = sqliteTable(
+  "card",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    transcript: text("transcript").notNull(),
+    status: text("status", {
+      enum: ["idea", "researching", "approval", "approved"],
+    })
+      .notNull()
+      .default("idea"),
+    plan: text("plan"),
+    estimate: text("estimate"),
+    spentUsd: real("spent_usd").notNull().default(0),
+    error: text("error"),
+    approvedAt: integer("approved_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("card_userId_idx").on(table.userId)]
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   tasks: many(task),
   lists: many(list),
+  cards: many(card),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -138,4 +165,8 @@ export const listRelations = relations(list, ({ one, many }) => ({
     relationName: "children",
   }),
   children: many(list, { relationName: "children" }),
+}))
+
+export const cardRelations = relations(card, ({ one }) => ({
+  user: one(user, { fields: [card.userId], references: [user.id] }),
 }))

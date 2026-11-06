@@ -13,7 +13,10 @@ export default defineConfig(async () => {
         main: "./worker/index.ts",
         wrangler: { configPath: "./wrangler.jsonc" },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations },
+          bindings: {
+            TEST_MIGRATIONS: migrations,
+            OPENROUTER_API_KEY: "test-key",
+          },
         },
       }),
     ],
