@@ -44,7 +44,13 @@ bun run --filter web cf-typegen
 
 `/board` turns a spoken note into a card. Whisper runs in a Web Worker through Transformers.js, so audio stays in the browser. Only the text you save reaches the Worker.
 
-Moving a card from Idea to Researching starts `CardResearchWorkflow`. One agent writes a plan, a second estimates its tokens, and the Worker prices those tokens against live OpenRouter rates. The card then waits in Needs approval. Approving marks it Approved. Nothing runs the work yet.
+Moving a card from Idea to Researching starts `CardResearchWorkflow`. One agent writes a plan, a second estimates its tokens, and the Worker prices those tokens against live OpenRouter rates. The card then waits in Needs approval.
+
+Approving starts `CardRunWorkflow`, which works through the plan with `deepseek/deepseek-v4-flash` and OpenRouter's web search, then writes up a result. Each model call is one Workflow step. A cut-off reply gets up to 3 turns.
+
+The run stops before any call whose worst case could pass `RUN_BUDGET_USD` ($1). A run that stops early goes back to Approved with its notes, and spends nothing more until someone presses Run again.
+
+`run` holds totals and `run_turn` holds every call, with provider, tokens, cached tokens, reasoning tokens, cost and duration. `search_usd` is the part of the cost that went to web search. Finished means every step ended. It does not mean the result was any good. The estimate does not include search fees yet.
 
 The Worker needs `OPENROUTER_API_KEY`, set with `wrangler secret put` and in `.dev.vars` locally.
 

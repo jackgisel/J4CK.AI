@@ -41,6 +41,11 @@
       "name": "j4ck-card-research",
       "binding": "CARD_RESEARCH",
       "class_name": "CardResearchWorkflow"
+    },
+    {
+      "name": "j4ck-card-run",
+      "binding": "CARD_RUN",
+      "class_name": "CardRunWorkflow"
     }
   ],
   "d1_databases": [

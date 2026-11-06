@@ -31,14 +31,16 @@ export function BoardPage() {
     void refresh()
   }, [refresh])
 
-  const researching = cards?.some((card) => card.status === "researching")
+  const working = cards?.some(
+    (card) => card.status === "researching" || card.status === "running"
+  )
   useEffect(() => {
-    if (!researching) {
+    if (!working) {
       return
     }
     const timer = setInterval(() => void refresh(), POLL_MS)
     return () => clearInterval(timer)
-  }, [researching, refresh])
+  }, [working, refresh])
 
   async function onCreate(transcript: string) {
     setError(null)
@@ -95,12 +97,12 @@ export function BoardPage() {
         </p>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
         {COLUMNS.map((column) => {
-          const rows = (cards ?? []).filter(
-            (card) => card.status === column.status
+          const rows = (cards ?? []).filter((card) =>
+            column.statuses.includes(card.status)
           )
-          const droppable = column.status === "researching"
+          const droppable = column.statuses.includes("researching")
 
           return (
             <section
@@ -108,7 +110,7 @@ export function BoardPage() {
               className={`flex min-h-40 flex-col gap-2 overflow-y-auto rounded-xl bg-muted/50 p-2 ${
                 droppable && dropTarget ? "ring-2 ring-ring" : ""
               }`}
-              key={column.status}
+              key={column.title}
               onDragLeave={droppable ? () => setDropTarget(false) : undefined}
               onDragOver={
                 droppable

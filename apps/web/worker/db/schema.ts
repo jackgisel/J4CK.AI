@@ -122,7 +122,7 @@ export const card = sqliteTable(
     title: text("title").notNull(),
     transcript: text("transcript").notNull(),
     status: text("status", {
-      enum: ["idea", "researching", "approval", "approved"],
+      enum: ["idea", "researching", "approval", "approved", "running", "done"],
     })
       .notNull()
       .default("idea"),
@@ -137,12 +137,87 @@ export const card = sqliteTable(
   (table) => [index("card_userId_idx").on(table.userId)]
 )
 
+export const run = sqliteTable(
+  "run",
+  {
+    // Also the Workflow instance id, so a runaway can be found and terminated.
+    id: text("id").primaryKey(),
+    cardId: text("card_id")
+      .notNull()
+      .references(() => card.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    model: text("model").notNull(),
+    status: text("status", {
+      enum: ["running", "finished", "capped", "turn_limit", "failed"],
+    })
+      .notNull()
+      .default("running"),
+    budgetUsd: real("budget_usd").notNull(),
+    // What research predicted for this model, kept in case the card changes.
+    estimateUsd: real("estimate_usd"),
+    estimateInputTokens: integer("estimate_input_tokens"),
+    estimateOutputTokens: integer("estimate_output_tokens"),
+    stepCount: integer("step_count").notNull().default(0),
+    stepsDone: integer("steps_done").notNull().default(0),
+    // These totals are recomputed from run_turn, so saving twice is harmless.
+    turns: integer("turns").notNull().default(0),
+    retries: integer("retries").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    reasoningTokens: integer("reasoning_tokens").notNull().default(0),
+    costUsd: real("cost_usd").notNull().default(0),
+    searchUsd: real("search_usd").notNull().default(0),
+    result: text("result"),
+    error: text("error"),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("run_cardId_idx").on(table.cardId),
+    index("run_userId_idx").on(table.userId),
+  ]
+)
+
+export const runTurn = sqliteTable(
+  "run_turn",
+  {
+    // runId:step:turn, so a retried save lands on the same row.
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => run.id, { onDelete: "cascade" }),
+    stepIndex: integer("step_index").notNull(),
+    stepTitle: text("step_title").notNull(),
+    turn: integer("turn").notNull(),
+    provider: text("provider"),
+    finishReason: text("finish_reason").notNull(),
+    retries: integer("retries").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    reasoningTokens: integer("reasoning_tokens").notNull().default(0),
+    // OpenRouter's count, which runs high: one billed search reported as 2.
+    searches: integer("searches").notNull().default(0),
+    costUsd: real("cost_usd").notNull().default(0),
+    searchUsd: real("search_usd").notNull().default(0),
+    durationMs: integer("duration_ms").notNull().default(0),
+    output: text("output").notNull(),
+    citations: text("citations").notNull().default("[]"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("run_turn_runId_idx").on(table.runId)]
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   tasks: many(task),
   lists: many(list),
   cards: many(card),
+  runs: many(run),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -167,6 +242,17 @@ export const listRelations = relations(list, ({ one, many }) => ({
   children: many(list, { relationName: "children" }),
 }))
 
-export const cardRelations = relations(card, ({ one }) => ({
+export const cardRelations = relations(card, ({ one, many }) => ({
   user: one(user, { fields: [card.userId], references: [user.id] }),
+  runs: many(run),
+}))
+
+export const runRelations = relations(run, ({ one, many }) => ({
+  card: one(card, { fields: [run.cardId], references: [card.id] }),
+  user: one(user, { fields: [run.userId], references: [user.id] }),
+  turns: many(runTurn),
+}))
+
+export const runTurnRelations = relations(runTurn, ({ one }) => ({
+  run: one(run, { fields: [runTurn.runId], references: [run.id] }),
 }))

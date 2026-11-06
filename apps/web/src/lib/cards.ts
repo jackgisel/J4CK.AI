@@ -1,6 +1,12 @@
 import { api } from "@/lib/api"
 
-export type CardStatus = "idea" | "researching" | "approval" | "approved"
+export type CardStatus =
+  | "idea"
+  | "researching"
+  | "approval"
+  | "approved"
+  | "running"
+  | "done"
 
 export type PlanStep = {
   title: string
@@ -29,6 +35,39 @@ export type Estimate = {
   models: ModelEstimate[]
 }
 
+export type RunStatus =
+  | "running"
+  | "finished"
+  | "capped"
+  | "turn_limit"
+  | "failed"
+
+export type Run = {
+  id: string
+  model: string
+  status: RunStatus
+  budgetUsd: number
+  estimateUsd: number | null
+  estimateInputTokens: number | null
+  estimateOutputTokens: number | null
+  stepCount: number
+  stepsDone: number
+  turns: number
+  retries: number
+  inputTokens: number
+  cachedTokens: number
+  outputTokens: number
+  reasoningTokens: number
+  costUsd: number
+  searchUsd: number
+  result: string | null
+  error: string | null
+  steps: Array<{ title: string; costUsd: number }>
+  sources: Array<{ url: string; title: string }>
+  startedAt: string
+  finishedAt: string | null
+}
+
 export type Card = {
   id: string
   title: string
@@ -37,17 +76,21 @@ export type Card = {
   plan: Plan | null
   estimate: Estimate | null
   spentUsd: number
+  runSpentUsd: number
+  runLimit: { model: string; budgetUsd: number }
+  run: Run | null
   error: string | null
   approvedAt: string | null
   createdAt: string
   updatedAt: string
 }
 
-export const COLUMNS: Array<{ status: CardStatus; title: string }> = [
-  { status: "idea", title: "Idea" },
-  { status: "researching", title: "Researching" },
-  { status: "approval", title: "Needs approval" },
-  { status: "approved", title: "Approved" },
+export const COLUMNS: Array<{ statuses: CardStatus[]; title: string }> = [
+  { statuses: ["idea"], title: "Idea" },
+  { statuses: ["researching"], title: "Researching" },
+  { statuses: ["approval"], title: "Needs approval" },
+  { statuses: ["approved", "running"], title: "Approved" },
+  { statuses: ["done"], title: "Done" },
 ]
 
 export async function listCards() {
@@ -84,4 +127,11 @@ export function formatUsd(value: number) {
 
 export function modelName(id: string) {
   return id.split("/").pop() ?? id
+}
+
+export function formatDuration(from: string, to: string) {
+  const seconds = Math.round((Date.parse(to) - Date.parse(from)) / 1000)
+  return seconds < 60
+    ? `${seconds}s`
+    : `${Math.floor(seconds / 60)}m ${seconds % 60}s`
 }
